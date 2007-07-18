@@ -1,0 +1,46 @@
+Name: 
+    HsSVN
+Synopsis: 
+    (Part of) Subversion binding for Haskell
+Description:
+    Subversion is a (part of) Subversion binding for Haskell. (FIXME:
+    more description)
+Version: 
+    0.1
+License: 
+    PublicDomain
+Author: 
+    PHO <phonohawk at ps dot sakura dot ne dot jp>
+Maintainer: 
+    PHO <phonohawk at ps dot sakura dot ne dot jp>
+Stability:
+    experimental
+Homepage: 
+    http://ccm.sherry.jp/HsSubversion/
+Category: 
+    System
+Tested-With: 
+    GHC == 6.6.1
+Build-Depends:
+    base
+Exposed-Modules:
+    Subversion
+    Subversion.Error
+    Subversion.Hash
+    Subversion.Pool
+    Subversion.Repository
+Extensions:
+    ForeignFunctionInterface
+GHC-Options: 
+    -fwarn-unused-imports -fglasgow-exts
+C-Sources:
+    cbits/HsSVN.c
+Include-Dirs:
+    cbits
+Install-Includes:
+    HsSVN.h
+Extra-Source-Files:
+    HsSVN.buildinfo.in
+    cbits/HsSVN.h
+    configure
+    configure.ac

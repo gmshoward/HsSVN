@@ -1,0 +1,2 @@
+cc-options: @SVN_CFLAGS@
+ld-options: @SVN_LIBS@

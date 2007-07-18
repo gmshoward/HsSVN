@@ -25,6 +25,8 @@ Build-Depends:
     base
 Exposed-Modules:
     Subversion
+    Subversion.Config
+    Subversion.FileSystem
     Subversion.Error
     Subversion.Hash
     Subversion.Pool

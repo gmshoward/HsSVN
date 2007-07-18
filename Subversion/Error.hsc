@@ -24,9 +24,12 @@ newtype SvnError
 
 data SVN_ERROR_T
 
+type APR_SIZE_T   = #type apr_size_t
+type APR_STATUS_T = #type apr_status_t
+
 
 foreign import ccall "svn_err_best_message"
-        _best_message :: Ptr SVN_ERROR_T -> Ptr CChar -> CSize -> IO (Ptr CChar)
+        _best_message :: Ptr SVN_ERROR_T -> Ptr CChar -> APR_SIZE_T -> IO (Ptr CChar)
 
 foreign import ccall "&svn_error_clear"
         _clear :: FunPtr (Ptr SVN_ERROR_T -> IO ())
@@ -44,7 +47,7 @@ svnErrCode :: SvnError -> IO SvnErrCode
 svnErrCode err
     = withSvnErrorPtr err $ \ errPtr -> 
       do num <- (#peek svn_error_t, apr_err) errPtr
-         return $ intToErrCode num
+         return $ statusToErrCode num
 
 
 svnErrMsg :: SvnError -> IO String
@@ -76,6 +79,6 @@ data SvnErrCode
     | UnknownError !Int
       deriving (Show, Eq, Typeable)
 
-intToErrCode :: Int -> SvnErrCode
-intToErrCode (#const SVN_ERR_REPOS_LOCKED) = ReposLocked
-intToErrCode n                             = UnknownError n
+statusToErrCode :: APR_STATUS_T -> SvnErrCode
+statusToErrCode (#const SVN_ERR_REPOS_LOCKED) = ReposLocked
+statusToErrCode n                             = UnknownError (fromIntegral n)

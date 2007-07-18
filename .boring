@@ -53,7 +53,9 @@
 ^HsSVN\.buildinfo$
 ^Setup$
 ^Subversion\.hs$
+^Subversion/Config\.hs$
 ^Subversion/Error\.hs$
+^Subversion/FileSystem\.hs$
 ^Subversion/Hash\.hs$
 ^Subversion/Pool\.hs$
 ^Subversion/Repository\.hs$

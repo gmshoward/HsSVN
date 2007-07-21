@@ -20,7 +20,7 @@ module Subversion.Hash
     )
     where
 
-import           Data.Int
+
 import           Foreign.C.String
 import           Foreign.C.Types
 import           Foreign.ForeignPtr
@@ -30,13 +30,11 @@ import           Foreign.Storable
 import qualified GHC.ForeignPtr        as GF
 import           Prelude               hiding (lookup)
 import           Subversion.Pool
+import           Subversion.Types
 
 
 newtype Hash a = Hash (ForeignPtr APR_HASH_T)
 data APR_HASH_T
-
-
-type APR_SSIZE_T = #type apr_ssize_t
 
 
 mallocStringForeignPtr :: String -> IO (ForeignPtr CChar)

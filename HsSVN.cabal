@@ -31,10 +31,12 @@ Exposed-Modules:
     Subversion.Hash
     Subversion.Pool
     Subversion.Repository
+    Subversion.Stream
+    Subversion.Types
 Extensions:
-    ForeignFunctionInterface
+    ForeignFunctionInterface, EmptyDataDecls
 GHC-Options: 
-    -fwarn-unused-imports -fglasgow-exts
+    -fwarn-unused-imports
 C-Sources:
     cbits/HsSVN.c
 Include-Dirs:

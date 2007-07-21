@@ -59,6 +59,8 @@
 ^Subversion/Hash\.hs$
 ^Subversion/Pool\.hs$
 ^Subversion/Repository\.hs$
+^Subversion/Stream\.hs$
+^Subversion/Types\.hs$
 
 ^aclocal\.m4$
 ^config\.(cache|status|log)$

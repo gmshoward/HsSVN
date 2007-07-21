@@ -21,14 +21,13 @@ import           Foreign.Storable
 import           GHC.ForeignPtr   as GF
 import           Subversion.Error
 import           Subversion.Pool
+import           Subversion.Types
 
 
 {- filesystem ---------------------------------------------------------------- -}
 
 newtype FileSystem = FileSystem (ForeignPtr SVN_FS_T)
 data SVN_FS_T
-
-type SVN_REVNUM_T = #type svn_revnum_t
 
 
 wrapFS :: ForeignPtr a -> Ptr SVN_FS_T -> IO FileSystem

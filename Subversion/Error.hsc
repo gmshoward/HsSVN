@@ -17,15 +17,14 @@ import           Control.Exception
 import           Data.Dynamic
 import           Foreign
 import           Foreign.C
+import           Subversion.Types
+
 
 newtype SvnError
     = SvnError (ForeignPtr SVN_ERROR_T)
       deriving (Typeable)
 
 data SVN_ERROR_T
-
-type APR_SIZE_T   = #type apr_size_t
-type APR_STATUS_T = #type apr_status_t
 
 
 foreign import ccall "svn_err_best_message"

@@ -1,6 +1,10 @@
 {- -*- haskell -*- -}
 module Subversion.Stream
     ( Stream
+    , SVN_STREAM_T
+
+    , wrapStream
+    , withStreamPtr
 
     , getEmptyStream
     , getStreamForStdOut
@@ -12,6 +16,8 @@ module Subversion.Stream
     , sWrite
     , sWriteBS
     , sWriteLBS
+
+    , sClose
     )
     where
 
@@ -47,11 +53,14 @@ foreign import ccall unsafe "svn_stream_read"
 foreign import ccall unsafe "svn_stream_write"
         _write :: Ptr SVN_STREAM_T -> Ptr CChar -> Ptr APR_SIZE_T -> IO (Ptr SVN_ERROR_T)
 
+foreign import ccall unsafe "svn_stream_close"
+        _close :: Ptr SVN_STREAM_T -> IO (Ptr SVN_ERROR_T)
 
-wrapStreamWithPool :: Pool -> Ptr SVN_STREAM_T -> IO Stream
-wrapStreamWithPool pool ioPtr
+
+wrapStream :: IO () -> Ptr SVN_STREAM_T -> IO Stream
+wrapStream finalizer ioPtr
     = do io <- newForeignPtr_ ioPtr
-         GF.addForeignPtrConcFinalizer io $ touchPool pool
+         GF.addForeignPtrConcFinalizer io finalizer
          return $ Stream io
 
 
@@ -63,7 +72,7 @@ getEmptyStream :: IO Stream
 getEmptyStream 
     = do pool <- newPool
          withPoolPtr pool $ \ poolPtr ->
-             _empty poolPtr >>= wrapStreamWithPool pool
+             wrapStream (touchPool pool) =<< _empty poolPtr
 
 
 getStreamForStdOut :: IO Stream
@@ -72,7 +81,7 @@ getStreamForStdOut
          alloca $ \ ioPtrPtr ->
              withPoolPtr pool $ \ poolPtr ->
                  do svnErr $ _for_stdout ioPtrPtr poolPtr
-                    wrapStreamWithPool pool =<< peek ioPtrPtr
+                    wrapStream (touchPool pool) =<< peek ioPtrPtr
 
 
 sRead :: Stream -> IO String
@@ -123,3 +132,9 @@ sWriteBS io str
 sWriteLBS :: Stream -> LazyByteString -> IO ()
 sWriteLBS io (LPS chunks)
     = mapM_ (sWriteBS io) chunks
+
+
+sClose :: Stream -> IO ()
+sClose io
+    = withStreamPtr io $ \ ioPtr ->
+      svnErr $ _close ioPtr

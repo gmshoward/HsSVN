@@ -25,4 +25,7 @@ withSubversion f
 
 rethrowSvnError :: SvnError -> IO a
 rethrowSvnError err
-    = svnErrMsg err >>= fail . ("withSubversion: caught an SvnError: " ++)
+    = let code = svnErrCode err
+          msg  = svnErrMsg  err
+      in
+        fail $ "withSubversion: caught an SvnError: " ++ (show code) ++ ": " ++ msg

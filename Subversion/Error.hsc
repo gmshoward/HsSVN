@@ -6,10 +6,16 @@ module Subversion.Error
     ( SvnError
     , SVN_ERROR_T
 
+    , wrapSvnError
+
     , svnErrCode
     , svnErrMsg
 
     , svnErr
+
+    , throwSvnErr
+
+    , SvnErrCode(..)
     )
     where
 
@@ -42,16 +48,18 @@ withSvnErrorPtr :: SvnError -> (Ptr SVN_ERROR_T -> IO a) -> IO a
 withSvnErrorPtr (SvnError err) = withForeignPtr err
 
 
-svnErrCode :: SvnError -> IO SvnErrCode
+svnErrCode :: SvnError -> SvnErrCode
 svnErrCode err
-    = withSvnErrorPtr err $ \ errPtr -> 
+    = unsafePerformIO $
+      withSvnErrorPtr err $ \ errPtr -> 
       do num <- (#peek svn_error_t, apr_err) errPtr
          return $ statusToErrCode num
 
 
-svnErrMsg :: SvnError -> IO String
+svnErrMsg :: SvnError -> String
 svnErrMsg err
-    = withSvnErrorPtr err $ \ errPtr ->
+    = unsafePerformIO $
+      withSvnErrorPtr err $ \ errPtr ->
       allocaArray maxErrMsgLen $ \ bufPtr ->
           _best_message errPtr bufPtr (fromIntegral maxErrMsgLen)
                >>= peekCString
@@ -70,14 +78,24 @@ svnErr f
     = do err <- wrapSvnError =<< f
          case err of
            Nothing -> return ()
-           Just e  -> throwIO $ DynException $ toDyn e
+           Just e  -> throwSvnErr e
+
+
+throwSvnErr :: SvnError -> IO a
+throwSvnErr = throwIO . DynException . toDyn
 
 
 data SvnErrCode
-    = ReposLocked
+    = AprENOENT
+    | ReposLocked
+    | FsConflict
+    | FsNotFound
     | UnknownError !Int
       deriving (Show, Eq, Typeable)
 
 statusToErrCode :: APR_STATUS_T -> SvnErrCode
+statusToErrCode (#const APR_ENOENT          ) = AprENOENT
 statusToErrCode (#const SVN_ERR_REPOS_LOCKED) = ReposLocked
+statusToErrCode (#const SVN_ERR_FS_CONFLICT ) = FsConflict
+statusToErrCode (#const SVN_ERR_FS_NOT_FOUND) = FsNotFound
 statusToErrCode n                             = UnknownError (fromIntegral n)

@@ -68,3 +68,4 @@
 ^dist($|/)
 ^examples/repos($|/)
 ^examples/HelloWorld$
+^examples/working($|/)

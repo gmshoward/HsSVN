@@ -22,7 +22,8 @@ module Subversion.Error
 import           Control.Exception
 import           Data.Dynamic
 import           Foreign
-import           Foreign.C
+import           Foreign.C.String
+import           Foreign.C.Types
 import           Subversion.Types
 
 
@@ -89,13 +90,15 @@ data SvnErrCode
     = AprENOENT
     | ReposLocked
     | FsConflict
+    | FsNotDirectory
     | FsNotFound
     | UnknownError !Int
       deriving (Show, Eq, Typeable)
 
 statusToErrCode :: APR_STATUS_T -> SvnErrCode
-statusToErrCode (#const APR_ENOENT          ) = AprENOENT
-statusToErrCode (#const SVN_ERR_REPOS_LOCKED) = ReposLocked
-statusToErrCode (#const SVN_ERR_FS_CONFLICT ) = FsConflict
-statusToErrCode (#const SVN_ERR_FS_NOT_FOUND) = FsNotFound
-statusToErrCode n                             = UnknownError (fromIntegral n)
+statusToErrCode (#const APR_ENOENT              ) = AprENOENT
+statusToErrCode (#const SVN_ERR_REPOS_LOCKED    ) = ReposLocked
+statusToErrCode (#const SVN_ERR_FS_CONFLICT     ) = FsConflict
+statusToErrCode (#const SVN_ERR_FS_NOT_DIRECTORY) = FsNotDirectory
+statusToErrCode (#const SVN_ERR_FS_NOT_FOUND    ) = FsNotFound
+statusToErrCode n                                 = UnknownError (fromIntegral n)

@@ -9,21 +9,26 @@ module Subversion.Hash
 
     , withHashPtr
     , unsafeHashToPtr
-    , unsafeHashToPtr'
     , touchHash
-    , touchHash'
+    , wrapHash
 
     , new
     , update
     , delete
     , lookup
+
+    , pairsToHash
+    , hashToPairs
+
+    , hashToValues
     )
     where
 
-
+import           Control.Monad
 import           Foreign.C.String
 import           Foreign.C.Types
 import           Foreign.ForeignPtr
+import           Foreign.Marshal.Alloc
 import           Foreign.Marshal.Utils hiding (new)
 import           Foreign.Ptr
 import           Foreign.Storable
@@ -31,10 +36,14 @@ import qualified GHC.ForeignPtr        as GF
 import           Prelude               hiding (lookup)
 import           Subversion.Pool
 import           Subversion.Types
+import           System.IO.Unsafe
 
 
 newtype Hash a = Hash (ForeignPtr APR_HASH_T)
 data APR_HASH_T
+
+newtype HashIndex a = HashIndex (ForeignPtr APR_HASH_INDEX_T)
+data APR_HASH_INDEX_T
 
 
 mallocStringForeignPtr :: String -> IO (ForeignPtr CChar)
@@ -48,17 +57,15 @@ mallocStringForeignPtr str
 
 class HashValue a where
     marshal   :: a -> IO (ForeignPtr ())
-    unmarshal :: ForeignPtr APR_HASH_T -> Ptr () -> IO a
+    unmarshal :: IO () -> Ptr () -> IO a
 
 instance HashValue String where
     marshal str
         = mallocStringForeignPtr str >>= return . castForeignPtr
 
-    unmarshal hash strPtr
+    unmarshal finalizer strPtr
         = do str <- peekCString (castPtr strPtr)
-             -- strPtr は hash の解放と同時に解放され得るのだが、
-             -- peekCString する前にそれが起きては困る。
-             touchForeignPtr hash
+             finalizer
              return str
 
 
@@ -71,11 +78,20 @@ foreign import ccall unsafe "apr_hash_set"
 foreign import ccall unsafe "apr_hash_get"
         _get :: Ptr APR_HASH_T -> Ptr () -> APR_SSIZE_T -> IO (Ptr ())
 
+foreign import ccall unsafe "apr_hash_first"
+        _first :: Ptr APR_POOL_T -> Ptr APR_HASH_T -> IO (Ptr APR_HASH_INDEX_T)
 
-wrapHash :: HashValue a => Pool -> Ptr APR_HASH_T -> IO (Hash a)
-wrapHash pool hashPtr
+foreign import ccall unsafe "apr_hash_this"
+        _this :: Ptr APR_HASH_INDEX_T -> Ptr (Ptr ()) -> Ptr APR_SSIZE_T -> Ptr (Ptr ()) -> IO ()
+
+foreign import ccall unsafe "apr_hash_next"
+        _next :: Ptr APR_HASH_INDEX_T -> IO (Ptr APR_HASH_INDEX_T)
+
+
+wrapHash :: IO () -> Ptr APR_HASH_T -> IO (Hash a)
+wrapHash finalizer hashPtr
     = do hash <- newForeignPtr_ hashPtr
-         GF.addForeignPtrConcFinalizer hash $ touchPool pool
+         GF.addForeignPtrConcFinalizer hash finalizer
          return $ Hash hash
 
 
@@ -87,24 +103,29 @@ unsafeHashToPtr :: Hash a -> Ptr APR_HASH_T
 unsafeHashToPtr (Hash hash) = unsafeForeignPtrToPtr hash
 
 
-unsafeHashToPtr' :: Maybe (Hash a) -> Ptr APR_HASH_T
-unsafeHashToPtr' Nothing     = nullPtr
-unsafeHashToPtr' (Just hash) = unsafeHashToPtr hash
-
-
 touchHash :: Hash a -> IO ()
 touchHash (Hash hash) = touchForeignPtr hash
 
 
-touchHash' :: Maybe (Hash a) -> IO ()
-touchHash' Nothing     = return ()
-touchHash' (Just hash) = touchHash hash
+wrapHashIdx :: IO () -> Ptr APR_HASH_INDEX_T -> IO (HashIndex a)
+wrapHashIdx finalizer idxPtr
+    = do idx <- newForeignPtr_ idxPtr
+         GF.addForeignPtrConcFinalizer idx finalizer
+         return $ HashIndex idx
+
+
+withHashIdxPtr :: HashIndex a -> (Ptr APR_HASH_INDEX_T -> IO b) -> IO b
+withHashIdxPtr (HashIndex idx) = withForeignPtr idx
+
+
+touchHashIdx :: HashIndex a -> IO ()
+touchHashIdx (HashIndex idx) = touchForeignPtr idx
 
 
 new :: HashValue a => IO (Hash a)
 new = do pool <- newPool
          withPoolPtr pool $ \ poolPtr ->
-             _make poolPtr >>= wrapHash pool
+             _make poolPtr >>= wrapHash (touchPool pool)
 
 -- 一旦 Hash に入れた値は、Hash 自体が解放されるまでは解放されなくなる
 -- 事に注意。それがまずいのであれば、Hash 自体に Map (Ptr ())
@@ -125,7 +146,7 @@ update (Hash hash) key value
                     touchForeignPtr valueFPtr
 
 
-delete :: HashValue a => Hash a -> String -> IO ()
+delete :: Hash a -> String -> IO ()
 delete hash key
     = withHashPtr    hash $ \ hashPtr ->
       withCStringLen key  $ \ (keyPtr, keyLen) ->
@@ -133,15 +154,90 @@ delete hash key
 
 
 lookup :: HashValue a => Hash a -> String -> IO (Maybe a)
-lookup (Hash hash) key
-    = withForeignPtr hash $ \ hashPtr ->
+lookup hash key
+    = withHashPtr    hash $ \ hashPtr ->
       withCStringLen key  $ \ (keyPtr, keyLen) ->
       do valuePtr <- _get hashPtr (castPtr keyPtr) (fromIntegral keyLen)
          if valuePtr == nullPtr then
              return Nothing
            else
-             do value <- unmarshal hash valuePtr
-                -- valuePtr は hash の解放と同時に解放され得るのだが、
-                -- unmarshal する前にそれが起きては困る。
-                touchForeignPtr hash
-                return $ Just value
+             -- valuePtr は hash の解放と同時に解放され得るのだが、
+             -- unmarshal する前にそれが起きては困る。
+             unmarshal (touchHash hash) valuePtr
+             >>= return . Just
+
+
+getFirst :: Hash a -> IO (Maybe (HashIndex a))
+getFirst hash
+    = do pool <- newPool
+         withPoolPtr pool $ \ poolPtr ->
+             withHashPtr hash $ \ hashPtr ->
+             do idxPtr <- _first poolPtr hashPtr
+                if idxPtr == nullPtr then
+                    return Nothing
+                  else
+                    liftM Just $ wrapHashIdx (touchPool pool) idxPtr
+
+
+getThis :: HashValue a => HashIndex a -> IO (String, a)
+getThis idx
+    = withHashIdxPtr idx $ \ idxPtr ->
+      alloca $ \ keyPtrPtr ->
+      alloca $ \ keyLenPtr ->
+      alloca $ \ valPtrPtr ->
+      do _this idxPtr keyPtrPtr keyLenPtr valPtrPtr
+         keyPtr <- liftM castPtr      (peek keyPtrPtr)
+         keyLen <- liftM fromIntegral (peek keyLenPtr)
+         key    <- peekCStringLen (keyPtr, keyLen)
+         valPtr <- peek valPtrPtr
+         val    <- unmarshal (touchHashIdx idx) valPtr
+         return (key, val)
+
+
+getThisValue :: HashValue a => HashIndex a -> IO a
+getThisValue idx
+    = withHashIdxPtr idx $ \ idxPtr ->
+      alloca $ \ valPtrPtr ->
+      do _this idxPtr nullPtr nullPtr valPtrPtr
+         valPtr <- peek valPtrPtr
+         val    <- unmarshal (touchHashIdx idx) valPtr
+         return val
+
+
+getNext :: HashValue a => HashIndex a -> IO (Maybe (HashIndex a))
+getNext idx
+    = withHashIdxPtr idx $ \ idxPtr ->
+      do idxPtr' <- _next idxPtr
+         if idxPtr' == nullPtr then
+             return Nothing
+           else
+             liftM Just $ wrapHashIdx (touchHashIdx idx) idxPtr'
+                    
+
+pairsToHash :: HashValue a => [(String, a)] -> IO (Hash a)
+pairsToHash xs
+    = do hash <- new
+         mapM_ (uncurry $ update hash) xs
+         return hash
+
+
+hashToPairs :: HashValue a => Hash a -> IO [(String, a)]
+hashToPairs hash = getFirst hash >>= loop
+    where
+      loop :: HashValue a => Maybe (HashIndex a) -> IO [(String, a)]
+      loop Nothing    = return []
+      loop (Just idx) = do x  <- getThis idx
+                           xs <- unsafeInterleaveIO $
+                                 (getNext idx >>= loop)
+                           return (x:xs)
+
+
+hashToValues :: HashValue a => Hash a -> IO [a]
+hashToValues hash = getFirst hash >>= loop
+    where
+      loop :: HashValue a => Maybe (HashIndex a) -> IO [a]
+      loop Nothing    = return []
+      loop (Just idx) = do x  <- getThisValue idx
+                           xs <- unsafeInterleaveIO $
+                                 (getNext idx >>= loop)
+                           return (x:xs)

@@ -27,6 +27,9 @@ Exposed-Modules:
     Subversion
     Subversion.Config
     Subversion.FileSystem
+    Subversion.FileSystem.DirEntry
+    Subversion.FileSystem.Root
+    Subversion.FileSystem.Transaction
     Subversion.Error
     Subversion.Hash
     Subversion.Pool

@@ -25,7 +25,7 @@ import           Control.Monad
 import           Data.ByteString.Base
 import qualified Data.ByteString.Char8      as B8
 import qualified Data.ByteString.Lazy.Char8 as L8
-import           Foreign.C
+import           Foreign.C.Types
 import           Foreign.ForeignPtr
 import           Foreign.Ptr
 import           Foreign.Marshal.Alloc

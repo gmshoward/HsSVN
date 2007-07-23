@@ -17,7 +17,8 @@ module Subversion.Repository
 
 import           Control.Monad
 import           Data.Maybe
-import           Foreign.C
+import           Foreign.C.String
+import           Foreign.C.Types
 import           Foreign.ForeignPtr
 import           Foreign.Ptr
 import           Foreign.Marshal.Alloc
@@ -25,6 +26,7 @@ import           Foreign.Storable
 import           GHC.ForeignPtr   as GF
 import           Subversion.Config
 import           Subversion.FileSystem
+import           Subversion.FileSystem.Transaction
 import           Subversion.Hash
 import           Subversion.Error
 import           Subversion.Pool
@@ -82,28 +84,28 @@ openRepository path
                         wrapRepos pool =<< peek reposPtrPtr
 
 
-createRepository :: FilePath -> Maybe (Hash Config) -> Maybe (Hash String) -> IO Repository
-createRepository path config fsConfig
+createRepository :: FilePath -> [(String, Config)] -> [(String, String)] -> IO Repository
+createRepository path configPairs fsConfigPairs
     = do pool <- newPool
          alloca $ \ reposPtrPtr ->
              withCString path $ \ pathPtr ->
                  withPoolPtr pool $ \ poolPtr ->
-                     do svnErr (_create
+                     do config   <- pairsToHash configPairs
+                        fsConfig <- pairsToHash fsConfigPairs
+                        svnErr (_create
                                 reposPtrPtr
                                 pathPtr
                                 nullPtr
                                 nullPtr
-                                (unsafeHashToPtr' config)
-                                (unsafeHashToPtr' fsConfig)
+                                (unsafeHashToPtr config)
+                                (unsafeHashToPtr fsConfig)
                                 poolPtr)
                         repos <- wrapRepos pool =<< peek reposPtrPtr
 
                         -- config と fsConfig には、repos が死ぬまでは
                         -- 生きてゐて慾しい。
-                        when (isJust config || isJust fsConfig)
-                             $ GF.addForeignPtrConcFinalizer (case repos of Repository x -> x)
-                                   $ do touchHash' config
-                                        touchHash' fsConfig
+                        GF.addForeignPtrConcFinalizer (case repos of Repository x -> x)
+                              $ (touchHash config >> touchHash fsConfig)
 
                         return repos
 

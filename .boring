@@ -56,6 +56,9 @@
 ^Subversion/Config\.hs$
 ^Subversion/Error\.hs$
 ^Subversion/FileSystem\.hs$
+^Subversion/FileSystem/DirEntry\.hs$
+^Subversion/FileSystem/Root\.hs$
+^Subversion/FileSystem/Transaction\.hs$
 ^Subversion/Hash\.hs$
 ^Subversion/Pool\.hs$
 ^Subversion/Repository\.hs$

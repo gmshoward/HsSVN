@@ -15,8 +15,7 @@ instance HashValue Config where
     marshal (Config config)
         = return $ castForeignPtr config
 
-    unmarshal hash configPtr
+    unmarshal finalizer configPtr
         = do config <- newForeignPtr_ configPtr
-             -- configPtr よりも hash が先に消えては困る。
-             GF.addForeignPtrConcFinalizer config $ touchForeignPtr hash
+             GF.addForeignPtrConcFinalizer config finalizer
              return $ Config $ castForeignPtr config

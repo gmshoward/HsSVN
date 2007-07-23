@@ -1,5 +1,7 @@
 import Subversion
 import Subversion.FileSystem
+import Subversion.FileSystem.Root
+import Subversion.FileSystem.Transaction
 import Subversion.Hash
 import Subversion.Repository
 import Subversion.Stream
@@ -10,11 +12,17 @@ main = withSubversion $
           fs    <- getRepositoryFS repos
           rev   <- getYoungestRev fs
 
+{-
+          root  <- getRevisionRoot fs rev
+          getDirEntries root "/" >>= print
+-}
+
           txn   <- beginTxnForCommit repos rev "PHO" "txn test"
           root  <- getTransactionRoot txn
 
-          applyText root "/hello" Nothing "Hello, world!\x0a"
+
+--          makeFile root "/tmp_"
           abortTxn txn
-          -- commitTxn repos txn >>= print
+--          commitTxn repos txn >>= print
 
           return ()

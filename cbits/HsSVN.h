@@ -4,6 +4,7 @@
 #include <apr_hash.h>
 #include <svn_error.h>
 #include <svn_error_codes.h>
+#include <svn_fs.h>
 #include <svn_pools.h>
 
 /* initialization ************************************************************ */

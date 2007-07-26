@@ -8,13 +8,11 @@ module Subversion.Repository
 
     , getRepositoryFS
 
-    , beginTxnForCommit
-    , beginTxnForUpdate
-
-    , commitTxn
+    , doReposTxn
     )
     where
 
+import           Control.Exception
 import           Control.Monad
 import           Data.Maybe
 import           Foreign.C.String
@@ -26,6 +24,7 @@ import           Foreign.Storable
 import           GHC.ForeignPtr   as GF
 import           Subversion.Config
 import           Subversion.FileSystem
+import           Subversion.FileSystem.Root
 import           Subversion.FileSystem.Transaction
 import           Subversion.Hash
 import           Subversion.Error
@@ -51,9 +50,6 @@ foreign import ccall unsafe "svn_repos_fs"
 
 foreign import ccall unsafe "svn_repos_fs_begin_txn_for_commit"
         _fs_begin_txn_for_commit :: Ptr (Ptr SVN_FS_TXN_T) -> Ptr SVN_REPOS_T -> SVN_REVNUM_T -> CString -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
-
-foreign import ccall unsafe "svn_repos_fs_begin_txn_for_update"
-        _fs_begin_txn_for_update :: Ptr (Ptr SVN_FS_TXN_T) -> Ptr SVN_REPOS_T -> SVN_REVNUM_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
 
 foreign import ccall unsafe "svn_repos_fs_commit_txn"
         _fs_commit_txn :: Ptr CString -> Ptr SVN_REPOS_T -> Ptr SVN_REVNUM_T -> Ptr SVN_FS_TXN_T -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
@@ -125,8 +121,8 @@ getRepositoryFS (Repository repos)
       _fs reposPtr >>= wrapFS repos
 
 
-beginTxnForCommit :: Repository -> Int -> String -> String -> IO Transaction
-beginTxnForCommit repos revNum author logMsg
+beginTxn :: Repository -> Int -> String -> String -> IO Transaction
+beginTxn repos revNum author logMsg
     = do pool <- newPool
          alloca $ \ txnPtrPtr ->
              withReposPtr repos $ \ reposPtr  ->
@@ -146,26 +142,6 @@ beginTxnForCommit repos revNum author logMsg
                   -- txn は pool にも repos にも依存する。
                   touchPool pool >> touchRepos repos)
              
-
-beginTxnForUpdate :: Repository -> Int -> String -> IO Transaction
-beginTxnForUpdate repos revNum author
-    = do pool <- newPool
-         alloca $ \ txnPtrPtr ->
-             withReposPtr repos $ \ reposPtr  ->
-             withCString author $ \ authorPtr ->
-             withPoolPtr pool   $ \ poolPtr   ->
-             (svnErr $
-              _fs_begin_txn_for_update
-              txnPtrPtr
-              reposPtr
-              (fromIntegral revNum)
-              authorPtr
-              poolPtr)
-             >>  peek txnPtrPtr
-             >>= (wrapTxn $ 
-                  -- txn は pool にも repos にも依存する。
-                  touchPool pool >> touchRepos repos)
-
 
 commitTxn :: Repository -> Transaction -> IO (Either FilePath Int)
 commitTxn repos txn
@@ -190,3 +166,29 @@ commitTxn repos txn
                              return . Left =<< peekCString =<< peek conflictPathPtrPtr
                          else
                              throwSvnErr e
+
+
+doReposTxn :: Repository
+           -> Int
+           -> String
+           -> String
+           -> Txn ()
+           -> IO (Either FilePath Int)
+doReposTxn repos revNum author logMsg c
+    = do txn <- beginTxn repos revNum author logMsg
+         handle (cleanUp txn) (tryTxn txn)
+    where
+      cleanUp :: Transaction -> Exception -> IO a
+      cleanUp txn exn
+          = abortTxn txn
+            >>
+            throwIO exn
+
+      tryTxn :: Transaction -> IO (Either FilePath Int)
+      tryTxn txn
+          = do root <- getTransactionRoot txn
+               runFS c root
+               
+               -- Good. We've got no exceptions during the computation
+               -- of Txn (). Now let us commit the transaction.
+               commitTxn repos txn

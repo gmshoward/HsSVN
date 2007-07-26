@@ -1,10 +1,15 @@
 {- -*- haskell -*- -}
 module Subversion.FileSystem.Root
-    ( FileSystemRoot
+    ( MonadFS(runFS)
+    , Rev
+    , Txn
+
+    , FileSystemRoot
     , SVN_FS_ROOT_T
-    , getRevisionRoot
 
     , wrapFSRoot
+
+    , withRevision
 
     , getFileContents
     , getFileContentsLBS
@@ -21,7 +26,8 @@ module Subversion.FileSystem.Root
     )
     where
 
-import           Control.Monad
+import           Control.Monad.Reader hiding (liftIO)
+import qualified Control.Monad.Trans as Tr
 import           Data.ByteString.Base
 import qualified Data.ByteString.Lazy.Char8 as L8
 import           Foreign.C.String
@@ -38,6 +44,52 @@ import           Subversion.Pool
 import           Subversion.Stream
 import           Subversion.Types
 
+
+{- class MonadFS ------------------------------------------------------------- -}
+
+class Monad m => MonadFS m where
+    getRoot :: m FileSystemRoot
+    liftIO  :: IO a -> m a
+    runFS   :: m a -> FileSystemRoot -> IO a
+
+
+{- Monad Rev ----------------------------------------------------------------- -}
+
+newtype Rev a = Rev { unRev :: ReaderT FileSystemRoot IO a }
+
+instance Functor Rev where
+    fmap f c = Rev (fmap f (unRev c))
+
+instance Monad Rev where
+    c >>= f = Rev (unRev c >>= unRev . f)
+    return  = Rev . return
+    fail    = Rev . fail
+
+instance MonadFS Rev where
+    getRoot  = Rev ask
+    liftIO a = Rev (Tr.liftIO a)
+    runFS c  = runReaderT (unRev c)
+
+
+{- Monad Txn ----------------------------------------------------------------- -}
+
+newtype Txn a = Txn { unTxn :: ReaderT FileSystemRoot IO a }
+
+instance Functor Txn where
+    fmap f c = Txn (fmap f (unTxn c))
+
+instance Monad Txn where
+    c >>= f = Txn (unTxn c >>= unTxn . f)
+    return  = Txn . return
+    fail    = Txn . fail
+
+instance MonadFS Txn where
+    getRoot  = Txn ask
+    liftIO a = Txn (Tr.liftIO a)
+    runFS c  = runReaderT (unTxn c)
+
+
+{- functions and types ------------------------------------------------------- -}
 
 newtype FileSystemRoot = FileSystemRoot (ForeignPtr SVN_FS_ROOT_T)
 data SVN_FS_ROOT_T
@@ -93,15 +145,24 @@ getRevisionRoot fs revNum
                       touchPool pool >> touchFS fs)
 
 
-getFileContents :: FileSystemRoot -> FilePath -> IO String
-getFileContents root path
-    = liftM L8.unpack $ getFileContentsLBS root path
+withRevision :: FileSystem -> Int -> Rev a -> IO a
+withRevision fs revNum c
+    = getRevisionRoot fs revNum
+      >>= runFS c
 
 
-getFileContentsLBS :: FileSystemRoot -> FilePath -> IO LazyByteString
-getFileContentsLBS root path
-    = do pool <- newPool
-         alloca $ \ ioPtrPtr ->
+getFileContents :: MonadFS m => FilePath -> m String
+getFileContents path
+    = liftM L8.unpack $ getFileContentsLBS path
+
+
+-- FIXME: もしこれが txn-root ならば遲延ストリーム讀出しが安全でなくな
+-- るので、ファイル全體を正格に讀んでしまふ。
+getFileContentsLBS :: MonadFS m => FilePath -> m LazyByteString
+getFileContentsLBS path
+    = do root <- getRoot
+         pool <- liftIO newPool
+         liftIO $ alloca $ \ ioPtrPtr ->
              withFSRootPtr root $ \ rootPtr ->
                  withCString path $ \ pathPtr ->
                      withPoolPtr pool $ \ poolPtr ->
@@ -111,15 +172,16 @@ getFileContentsLBS root path
                          >>= sReadLBS
 
 
-applyText :: FileSystemRoot -> FilePath -> Maybe String -> String -> IO ()
-applyText root path resultMD5 contents
-    = applyTextLBS root path resultMD5 (L8.pack contents)
+applyText :: FilePath -> Maybe String -> String -> Txn ()
+applyText path resultMD5 contents
+    = applyTextLBS path resultMD5 (L8.pack contents)
 
 
-applyTextLBS :: FileSystemRoot -> FilePath -> Maybe String -> LazyByteString -> IO ()
-applyTextLBS root path resultMD5 contents
-    = do pool <- newPool
-         alloca $ \ ioPtrPtr ->
+applyTextLBS :: FilePath -> Maybe String -> LazyByteString -> Txn ()
+applyTextLBS path resultMD5 contents
+    = do root <- getRoot
+         pool <- liftIO newPool
+         liftIO $ alloca $ \ ioPtrPtr ->
              withFSRootPtr root      $ \ rootPtr      ->
              withCString   path      $ \ pathPtr      ->
              withCString'  resultMD5 $ \ resultMD5Ptr ->
@@ -134,37 +196,41 @@ applyTextLBS root path resultMD5 contents
       withCString' (Just str) f = withCString str f
 
 
-makeFile :: FileSystemRoot -> FilePath -> IO ()
-makeFile root path
-    = do pool <- newPool
-         withFSRootPtr root   $ \ rootPtr ->
+makeFile :: FilePath -> Txn ()
+makeFile path
+    = do root <- getRoot
+         pool <- liftIO newPool
+         liftIO $ withFSRootPtr root $ \ rootPtr ->
              withCString path $ \ pathPtr ->
              withPoolPtr pool $ \ poolPtr ->
              svnErr $ _make_file rootPtr pathPtr poolPtr
 
 
-makeDirectory :: FileSystemRoot -> FilePath -> IO ()
-makeDirectory root path
-    = do pool <- newPool
-         withFSRootPtr root   $ \ rootPtr ->
+makeDirectory :: FilePath -> Txn ()
+makeDirectory path
+    = do root <- getRoot
+         pool <- liftIO newPool
+         liftIO $ withFSRootPtr root $ \ rootPtr ->
              withCString path $ \ pathPtr ->
              withPoolPtr pool $ \ poolPtr ->
              svnErr $ _make_dir rootPtr pathPtr poolPtr
 
 
-deleteEntry :: FileSystemRoot -> FilePath -> IO ()
-deleteEntry root path
-    = do pool <- newPool
-         withFSRootPtr   root $ \ rootPtr ->
+deleteEntry :: FilePath -> Txn ()
+deleteEntry path
+    = do root <- getRoot
+         pool <- liftIO newPool
+         liftIO $ withFSRootPtr root $ \ rootPtr ->
              withCString path $ \ pathPtr ->
              withPoolPtr pool $ \ poolPtr ->
              svnErr $ _delete rootPtr pathPtr poolPtr
 
 
-getDirEntries :: FileSystemRoot -> FilePath -> IO [DirEntry]
-getDirEntries root path
-    = do pool <- newPool
-         alloca $ \ hashPtrPtr ->
+getDirEntries :: MonadFS m => FilePath -> m [DirEntry]
+getDirEntries path
+    = do root <- getRoot
+         pool <- liftIO newPool
+         liftIO $ alloca $ \ hashPtrPtr ->
              withFSRootPtr root $ \ rootPtr ->
              withCString   path $ \ pathPtr ->
              withPoolPtr   pool $ \ poolPtr ->

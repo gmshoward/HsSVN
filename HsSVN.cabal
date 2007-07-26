@@ -22,7 +22,7 @@ Category:
 Tested-With: 
     GHC == 6.6.1
 Build-Depends:
-    base
+    base, mtl
 Exposed-Modules:
     Subversion
     Subversion.Config

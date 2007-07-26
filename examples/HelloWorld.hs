@@ -12,17 +12,28 @@ main = withSubversion $
           fs    <- getRepositoryFS repos
           rev   <- getYoungestRev fs
 
+          doReposTxn repos rev "PHO" "txn test"
+                         $ makeFile "/hello?"
+
+{-
+          hello <- withRevision fs rev $
+                   getFileContents "/hello"
+          putStr hello
+-}
+
 {-
           root  <- getRevisionRoot fs rev
           getDirEntries root "/" >>= print
 -}
 
+{-
           txn   <- beginTxnForCommit repos rev "PHO" "txn test"
           root  <- getTransactionRoot txn
+-}
 
 
 --          makeFile root "/tmp_"
-          abortTxn txn
+--          abortTxn txn
 --          commitTxn repos txn >>= print
 
           return ()

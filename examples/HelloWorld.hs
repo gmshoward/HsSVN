@@ -12,8 +12,14 @@ main = withSubversion $
           fs    <- getRepositoryFS repos
           rev   <- getYoungestRev fs
 
+          plist <- withRevision fs rev
+                   $ getNodeProp "/hello" "svn:mime-type"
+          print plist
+
+{-
           doReposTxn repos rev "PHO" "txn test"
-                         $ makeFile "/hello?"
+                         $ changeNodeProp "/hello" "rakka:test" "('A`)"
+-}
 
 {-
           hello <- withRevision fs rev $

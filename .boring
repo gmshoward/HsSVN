@@ -63,6 +63,7 @@
 ^Subversion/Pool\.hs$
 ^Subversion/Repository\.hs$
 ^Subversion/Stream\.hs$
+^Subversion/String\.hs$
 ^Subversion/Types\.hs$
 
 ^aclocal\.m4$

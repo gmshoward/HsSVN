@@ -21,6 +21,9 @@ module Subversion.Hash
     , hashToPairs
 
     , hashToValues
+
+    , mapHash
+    , mapHash'
     )
     where
 
@@ -181,6 +184,13 @@ getFirst hash
 
 getThis :: HashValue a => HashIndex a -> IO (String, a)
 getThis idx
+    = do (key, valPtr) <- getThis' idx
+         val <- unmarshal (touchHashIdx idx) (castPtr valPtr)
+         return (key, val)
+
+
+getThis' :: HashIndex a -> IO (String, Ptr a)
+getThis' idx
     = withHashIdxPtr idx $ \ idxPtr ->
       alloca $ \ keyPtrPtr ->
       alloca $ \ keyLenPtr ->
@@ -190,21 +200,10 @@ getThis idx
          keyLen <- liftM fromIntegral (peek keyLenPtr)
          key    <- peekCStringLen (keyPtr, keyLen)
          valPtr <- peek valPtrPtr
-         val    <- unmarshal (touchHashIdx idx) valPtr
-         return (key, val)
+         return (key, castPtr valPtr)
 
 
-getThisValue :: HashValue a => HashIndex a -> IO a
-getThisValue idx
-    = withHashIdxPtr idx $ \ idxPtr ->
-      alloca $ \ valPtrPtr ->
-      do _this idxPtr nullPtr nullPtr valPtrPtr
-         valPtr <- peek valPtrPtr
-         val    <- unmarshal (touchHashIdx idx) valPtr
-         return val
-
-
-getNext :: HashValue a => HashIndex a -> IO (Maybe (HashIndex a))
+getNext :: HashIndex a -> IO (Maybe (HashIndex a))
 getNext idx
     = withHashIdxPtr idx $ \ idxPtr ->
       do idxPtr' <- _next idxPtr
@@ -222,22 +221,28 @@ pairsToHash xs
 
 
 hashToPairs :: HashValue a => Hash a -> IO [(String, a)]
-hashToPairs hash = getFirst hash >>= loop
+hashToPairs = mapHash (return . id)
+
+
+hashToValues :: HashValue a => Hash a -> IO [a]
+hashToValues = mapHash (return . snd)
+
+
+mapHash :: HashValue a => ((String, a) -> IO b) -> Hash a -> IO [b]
+mapHash f hash = getFirst hash >>= loop
     where
-      loop :: HashValue a => Maybe (HashIndex a) -> IO [(String, a)]
       loop Nothing    = return []
-      loop (Just idx) = do x  <- getThis idx
+      loop (Just idx) = do x  <- f =<< getThis idx
                            xs <- unsafeInterleaveIO $
                                  (getNext idx >>= loop)
                            return (x:xs)
 
 
-hashToValues :: HashValue a => Hash a -> IO [a]
-hashToValues hash = getFirst hash >>= loop
+mapHash' :: ((String, Ptr a) -> IO b) -> Hash a -> IO [b]
+mapHash' f hash = getFirst hash >>= loop
     where
-      loop :: HashValue a => Maybe (HashIndex a) -> IO [a]
       loop Nothing    = return []
-      loop (Just idx) = do x  <- getThisValue idx
+      loop (Just idx) = do x  <- f =<< getThis' idx
                            xs <- unsafeInterleaveIO $
                                  (getNext idx >>= loop)
                            return (x:xs)

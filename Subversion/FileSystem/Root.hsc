@@ -17,6 +17,18 @@ module Subversion.FileSystem.Root
     , applyText
     , applyTextLBS
 
+    , changeNodeProp
+    , changeNodePropBS
+    , changeNodePropLBS
+
+    , getNodePropList
+    , getNodePropListBS
+    , getNodePropListLBS
+
+    , getNodeProp
+    , getNodePropBS
+    , getNodePropLBS
+
     , makeFile
     , makeDirectory
 
@@ -29,11 +41,12 @@ module Subversion.FileSystem.Root
 import           Control.Monad.Reader hiding (liftIO)
 import qualified Control.Monad.Trans as Tr
 import           Data.ByteString.Base
+import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as L8
 import           Foreign.C.String
 import           Foreign.ForeignPtr
-import           Foreign.Ptr
 import           Foreign.Marshal.Alloc
+import           Foreign.Ptr
 import           Foreign.Storable
 import           GHC.ForeignPtr   as GF
 import           Subversion.FileSystem
@@ -42,6 +55,7 @@ import           Subversion.Error
 import           Subversion.Hash
 import           Subversion.Pool
 import           Subversion.Stream
+import           Subversion.String
 import           Subversion.Types
 
 
@@ -103,6 +117,15 @@ foreign import ccall unsafe "svn_fs_file_contents"
 
 foreign import ccall unsafe "svn_fs_apply_text"
         _apply_text :: Ptr (Ptr SVN_STREAM_T) -> Ptr SVN_FS_ROOT_T -> CString -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
+
+foreign import ccall unsafe "svn_fs_change_node_prop"
+        _change_node_prop :: Ptr SVN_FS_ROOT_T -> CString -> CString -> Ptr SVN_STRING_T -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
+
+foreign import ccall unsafe "svn_fs_node_proplist"
+        _node_proplist :: Ptr (Ptr APR_HASH_T) -> Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
+
+foreign import ccall unsafe "svn_fs_node_prop"
+        _node_prop :: Ptr (Ptr SVN_STRING_T) -> Ptr SVN_FS_ROOT_T -> CString -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
 
 foreign import ccall unsafe "svn_fs_make_file"
         _make_file :: Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
@@ -194,6 +217,85 @@ applyTextLBS path resultMD5 contents
       withCString' :: Maybe String -> (CString -> IO a) -> IO a
       withCString' Nothing    f = f nullPtr
       withCString' (Just str) f = withCString str f
+
+
+changeNodeProp :: FilePath -> String -> String -> Txn ()
+changeNodeProp path name value
+    = changeNodePropBS path name (B8.pack value)
+
+
+changeNodePropBS :: FilePath -> String -> ByteString -> Txn ()
+changeNodePropBS path name value
+    = do root <- getRoot
+         pool <- liftIO newPool
+         liftIO $ withFSRootPtr root $ \ rootPtr ->
+             withCString   path  $ \ pathPtr  ->
+             withCString   name  $ \ namePtr  ->
+             withSvnString value $ \ valuePtr ->
+             withPoolPtr   pool  $ \ poolPtr  ->
+             svnErr $ _change_node_prop rootPtr pathPtr namePtr valuePtr poolPtr
+
+
+changeNodePropLBS :: FilePath -> String -> LazyByteString -> Txn ()
+changeNodePropLBS path name (LPS xs)
+    = changeNodePropBS path name (B8.concat xs)
+
+
+getNodePropList :: MonadFS m => FilePath -> m [(String, String)]
+getNodePropList path
+    = getNodePropListBS path
+      >>=
+      return . map (\ (name, value)
+                        -> (name, B8.unpack value))
+
+
+getNodePropListBS :: MonadFS m => FilePath -> m [(String, ByteString)]
+getNodePropListBS path
+    = do root <- getRoot
+         pool <- liftIO newPool
+         liftIO $ alloca $ \ hashPtrPtr ->
+             withFSRootPtr root $ \ rootPtr ->
+             withCString   path $ \ pathPtr ->
+             withPoolPtr   pool $ \ poolPtr ->
+                 do svnErr $ _node_proplist hashPtrPtr rootPtr pathPtr poolPtr
+                    hash <- wrapHash (touchPool pool) =<< peek hashPtrPtr
+                    mapHash' peekEntry hash
+    where
+      peekEntry :: (String, Ptr SVN_STRING_T) -> IO (String, ByteString)
+      peekEntry (name, valPtr)
+          = do value <- peekSvnString valPtr
+               return (name, value)
+
+
+getNodePropListLBS :: MonadFS m => FilePath -> m [(String, LazyByteString)]
+getNodePropListLBS path
+    = getNodePropListBS path
+      >>=
+      return . map (\ (name, value)
+                        -> (name, LPS [value]))
+
+
+getNodeProp :: MonadFS m => FilePath -> String -> m (Maybe String)
+getNodeProp path name
+    = getNodePropBS path name >>= return . fmap B8.unpack
+
+
+getNodePropBS :: MonadFS m => FilePath -> String -> m (Maybe ByteString)
+getNodePropBS path name
+    = do root <- getRoot
+         pool <- liftIO newPool
+         liftIO $ alloca $ \ valPtrPtr ->
+             withFSRootPtr root $ \ rootPtr ->
+             withCString   path $ \ pathPtr ->
+             withCString   name $ \ namePtr ->
+             withPoolPtr   pool $ \ poolPtr ->
+                 do svnErr $ _node_prop valPtrPtr rootPtr pathPtr namePtr poolPtr
+                    peekSvnString' =<< peek valPtrPtr
+
+
+getNodePropLBS :: MonadFS m => FilePath -> String -> m (Maybe LazyByteString)
+getNodePropLBS path name
+    = getNodePropBS path name >>= return . fmap (\ bs -> LPS [bs])
 
 
 makeFile :: FilePath -> Txn ()

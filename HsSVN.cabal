@@ -35,6 +35,7 @@ Exposed-Modules:
     Subversion.Pool
     Subversion.Repository
     Subversion.Stream
+    Subversion.String
     Subversion.Types
 Extensions:
     ForeignFunctionInterface, EmptyDataDecls

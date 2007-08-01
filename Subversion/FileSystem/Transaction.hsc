@@ -26,6 +26,8 @@ module Subversion.FileSystem.Transaction
     , makeDirectory
 
     , deleteEntry
+
+    , copyEntry
     )
     where
 
@@ -41,6 +43,7 @@ import           Foreign.Marshal.Alloc
 import           Foreign.Storable
 import           GHC.ForeignPtr   as GF
 import           Subversion.Error
+import           Subversion.FileSystem.Revision
 import           Subversion.FileSystem.Root
 import           Subversion.Hash
 import           Subversion.Pool
@@ -109,6 +112,9 @@ foreign import ccall unsafe "svn_fs_make_dir"
 
 foreign import ccall unsafe "svn_fs_delete"
         _delete :: Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
+
+foreign import ccall unsafe "svn_fs_copy"
+        _copy :: Ptr SVN_FS_ROOT_T -> CString -> Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
 
 
 wrapTxn :: IO () -> Ptr SVN_FS_TXN_T -> IO Transaction
@@ -268,3 +274,18 @@ deleteEntry path
              withCString path $ \ pathPtr ->
              withPoolPtr pool $ \ poolPtr ->
              svnErr $ _delete rootPtr pathPtr poolPtr
+
+
+copyEntry :: Int -> FilePath -> FilePath -> Txn ()
+copyEntry fromRevNum fromPath toPath
+    = do toRoot <- getRoot
+         fs     <- unsafeIOToFS $ getRootFS toRoot
+         unsafeIOToFS $ withRevision fs fromRevNum
+             $ do fromRoot <- getRoot
+                  pool     <- unsafeIOToFS newPool
+                  unsafeIOToFS $ withFSRootPtr fromRoot $ \ fromRootPtr ->
+                      withCString   fromPath $ \ fromPathPtr ->
+                      withFSRootPtr toRoot   $ \ toRootPtr   ->
+                      withCString   toPath   $ \ toPathPtr   ->
+                      withPoolPtr   pool     $ \ poolPtr     ->
+                      svnErr $ _copy fromRootPtr fromPathPtr toRootPtr toPathPtr poolPtr

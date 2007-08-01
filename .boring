@@ -57,6 +57,7 @@
 ^Subversion/Error\.hs$
 ^Subversion/FileSystem\.hs$
 ^Subversion/FileSystem/DirEntry\.hs$
+^Subversion/FileSystem/PathChange\.hs$
 ^Subversion/FileSystem/Revision\.hs$
 ^Subversion/FileSystem/Root\.hs$
 ^Subversion/FileSystem/Transaction\.hs$

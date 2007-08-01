@@ -8,6 +8,7 @@ module Subversion.Types
     , APR_STATUS_T
 
     , SVN_BOOLEAN_T
+    , SVN_FILESIZE_T
     , SVN_NODE_KIND_T
     , SVN_REVNUM_T
     , SVN_VERSION_T
@@ -30,11 +31,12 @@ import           Foreign.Ptr
 import           Foreign.Storable
 
 
-type APR_SIZE_T    = #type apr_size_t
-type APR_SSIZE_T   = #type apr_ssize_t
-type APR_STATUS_T  = #type apr_status_t
+type APR_SIZE_T     = #type apr_size_t
+type APR_SSIZE_T    = #type apr_ssize_t
+type APR_STATUS_T   = #type apr_status_t
 
 type SVN_BOOLEAN_T   = #type svn_boolean_t
+type SVN_FILESIZE_T  = #type svn_filesize_t
 type SVN_NODE_KIND_T = #type svn_node_kind_t
 type SVN_REVNUM_T    = #type svn_revnum_t
 data SVN_VERSION_T

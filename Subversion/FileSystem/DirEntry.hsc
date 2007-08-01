@@ -31,6 +31,7 @@ instance HashValue DirEntry where
         = do namePtr <- (#peek svn_fs_dirent_t, name) entPtr
              name    <- peekCString namePtr
              kind    <- (#peek svn_fs_dirent_t, kind) entPtr
+             finalizer
              return DirEntry {
                               entName = name
                             , entKind = unmarshalNodeKind kind

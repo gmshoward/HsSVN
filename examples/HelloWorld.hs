@@ -15,13 +15,11 @@ main = withSubversion $
 
 {-
           doReposTxn repos rev "PHO" "txn test"
-                         $ do hello <- getFileContents "/hello"
-                              unsafeIOToFS $ putStrLn hello
-                              fail ""
+                         $ do copyEntry rev "hello" "olleh"
 -}
 
-          hello <- withRevision fs rev $
-                   getNodeHistory True "/tmp"
+          hello <- withRevision fs 16 $
+                   getPathsChanged
           print hello
 
 {-

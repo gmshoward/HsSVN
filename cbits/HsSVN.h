@@ -2,6 +2,7 @@
 #define HSSVN_H_INCLUDED
 #include <apr_errno.h>
 #include <apr_hash.h>
+#include <apr_md5.h>
 #include <svn_error.h>
 #include <svn_error_codes.h>
 #include <svn_fs.h>

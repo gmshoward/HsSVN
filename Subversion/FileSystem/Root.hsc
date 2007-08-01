@@ -1,4 +1,7 @@
 {- -*- haskell -*- -}
+
+#include "HsSVN.h"
+
 module Subversion.FileSystem.Root
     ( MonadFS(..)
 
@@ -8,6 +11,11 @@ module Subversion.FileSystem.Root
     , wrapFSRoot -- private
     , withFSRootPtr -- private
 
+    , getRootFS -- private
+
+    , getFileLength
+    , getFileMD5
+
     , getFileContents
     , getFileContentsLBS
 
@@ -15,6 +23,7 @@ module Subversion.FileSystem.Root
     , getNodePropList
 
     , getDirEntries
+    , getPathsChanged
 
     , checkPath
     , isDirectory
@@ -26,13 +35,18 @@ import           Control.Monad
 import           Data.ByteString.Base
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as L8
+import           Data.Word
 import           Foreign.C.String
+import           Foreign.C.Types
 import           Foreign.ForeignPtr
 import           Foreign.Marshal.Alloc
+import           Foreign.Marshal.Array
 import           Foreign.Ptr
 import           Foreign.Storable
 import           GHC.ForeignPtr   as GF
+import           Subversion.FileSystem
 import           Subversion.FileSystem.DirEntry
+import           Subversion.FileSystem.PathChange
 import           Subversion.Error
 import           Subversion.Hash
 import           Subversion.Pool
@@ -55,6 +69,15 @@ newtype FileSystemRoot = FileSystemRoot (ForeignPtr SVN_FS_ROOT_T)
 data SVN_FS_ROOT_T
 
 
+foreign import ccall unsafe "svn_fs_root_fs"
+        _root_fs :: Ptr SVN_FS_ROOT_T -> IO (Ptr SVN_FS_T)
+
+foreign import ccall unsafe "svn_fs_file_length"
+        _file_length :: Ptr SVN_FILESIZE_T -> Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
+
+foreign import ccall unsafe "svn_fs_file_md5_checksum"
+        _file_md5_checksum :: Ptr CUChar -> Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
+
 foreign import ccall unsafe "svn_fs_file_contents"
         _file_contents :: Ptr (Ptr SVN_STREAM_T) -> Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
 
@@ -66,6 +89,9 @@ foreign import ccall unsafe "svn_fs_node_prop"
 
 foreign import ccall unsafe "svn_fs_dir_entries"
         _dir_entries :: Ptr (Ptr APR_HASH_T) -> Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
+
+foreign import ccall unsafe "svn_fs_paths_changed"
+        _paths_changed :: Ptr (Ptr APR_HASH_T) -> Ptr SVN_FS_ROOT_T -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
 
 foreign import ccall unsafe "svn_fs_check_path"
         _check_path :: Ptr SVN_NODE_KIND_T -> Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
@@ -90,6 +116,39 @@ withFSRootPtr (FileSystemRoot root) = withForeignPtr root
 
 touchFSRoot :: FileSystemRoot -> IO ()
 touchFSRoot (FileSystemRoot root) = touchForeignPtr root
+
+
+getRootFS :: FileSystemRoot -> IO FileSystem
+getRootFS root
+    = withFSRootPtr root $ \ rootPtr ->
+      -- 實際には root が生きてゐる限り fs は死なないのだが、念の爲。
+      wrapFS (touchFSRoot root) =<< _root_fs rootPtr
+
+
+getFileLength :: MonadFS m => FilePath -> m Integer
+getFileLength path
+    = do root <- getRoot
+         pool <- unsafeIOToFS newPool
+         unsafeIOToFS $ alloca $ \ lenPtr ->
+             withFSRootPtr root $ \ rootPtr ->
+             withCString   path $ \ pathPtr ->
+             withPoolPtr   pool $ \ poolPtr ->
+             do svnErr $ _file_length lenPtr rootPtr pathPtr poolPtr
+                return . toInteger =<< peek lenPtr
+
+
+getFileMD5 :: MonadFS m => FilePath -> m [Word8]
+getFileMD5 path
+    = do root <- getRoot
+         pool <- unsafeIOToFS newPool
+         unsafeIOToFS $ allocaArray md5Len $ \ bufPtr ->
+             withFSRootPtr root $ \ rootPtr ->
+             withCString   path $ \ pathPtr ->
+             withPoolPtr   pool $ \ poolPtr ->
+             do svnErr $ _file_md5_checksum bufPtr rootPtr pathPtr poolPtr
+                return . map fromIntegral =<< peekArray md5Len bufPtr
+    where
+      md5Len = (#const APR_MD5_DIGESTSIZE)
 
 
 getFileContents :: MonadFS m => FilePath -> m String
@@ -160,8 +219,21 @@ getDirEntries path
              withPoolPtr   pool $ \ poolPtr ->
              (svnErr $ _dir_entries hashPtrPtr rootPtr pathPtr poolPtr)
              >>  peek hashPtrPtr
-             >>= wrapHash (touchFSRoot root)
+             >>= wrapHash (touchFSRoot root >> touchPool pool)
              >>= hashToValues
+
+
+getPathsChanged :: MonadFS m => m [(FilePath, PathChange)]
+getPathsChanged
+    = do root <- getRoot
+         pool <- unsafeIOToFS newPool
+         unsafeIOToFS $ alloca $ \ hashPtrPtr ->
+             withFSRootPtr root $ \ rootPtr ->
+             withPoolPtr   pool $ \ poolPtr ->
+             do svnErr $ _paths_changed hashPtrPtr rootPtr poolPtr
+                peek hashPtrPtr
+                     >>= wrapHash (touchFSRoot root >> touchPool pool)
+                     >>= hashToPairs
 
 
 checkPath :: MonadFS m => FilePath -> m NodeKind

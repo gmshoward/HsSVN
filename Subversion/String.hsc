@@ -5,6 +5,7 @@
 module Subversion.String
     ( SVN_STRING_T
     , withSvnString
+    , withSvnString'
     , peekSvnString
     , peekSvnString'
     )
@@ -41,6 +42,11 @@ withSvnString bs f
       do pokeData obj bsBuf
          pokeLen  obj (fromIntegral bsLen)
          f obj
+
+
+withSvnString' :: Maybe ByteString -> (Ptr SVN_STRING_T -> IO a) -> IO a
+withSvnString' Nothing   f = f nullPtr
+withSvnString' (Just bs) f = withSvnString bs f
 
 
 peekSvnString :: Ptr SVN_STRING_T -> IO ByteString

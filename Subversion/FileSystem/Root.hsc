@@ -1,45 +1,28 @@
 {- -*- haskell -*- -}
 module Subversion.FileSystem.Root
-    ( MonadFS(runFS)
-    , Rev
-    , Txn
+    ( MonadFS(..)
 
-    , FileSystemRoot
-    , SVN_FS_ROOT_T
+    , FileSystemRoot -- private
+    , SVN_FS_ROOT_T -- private
 
-    , wrapFSRoot
-
-    , withRevision
+    , wrapFSRoot -- private
+    , withFSRootPtr -- private
 
     , getFileContents
     , getFileContentsLBS
 
-    , applyText
-    , applyTextLBS
-
-    , changeNodeProp
-    , changeNodePropBS
-    , changeNodePropLBS
-
-    , getNodePropList
-    , getNodePropListBS
-    , getNodePropListLBS
-
     , getNodeProp
-    , getNodePropBS
-    , getNodePropLBS
-
-    , makeFile
-    , makeDirectory
-
-    , deleteEntry
+    , getNodePropList
 
     , getDirEntries
+
+    , checkPath
+    , isDirectory
+    , isFile
     )
     where
 
-import           Control.Monad.Reader hiding (liftIO)
-import qualified Control.Monad.Trans as Tr
+import           Control.Monad
 import           Data.ByteString.Base
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as L8
@@ -49,7 +32,6 @@ import           Foreign.Marshal.Alloc
 import           Foreign.Ptr
 import           Foreign.Storable
 import           GHC.ForeignPtr   as GF
-import           Subversion.FileSystem
 import           Subversion.FileSystem.DirEntry
 import           Subversion.Error
 import           Subversion.Hash
@@ -62,45 +44,9 @@ import           Subversion.Types
 {- class MonadFS ------------------------------------------------------------- -}
 
 class Monad m => MonadFS m where
-    getRoot :: m FileSystemRoot
-    liftIO  :: IO a -> m a
-    runFS   :: m a -> FileSystemRoot -> IO a
-
-
-{- Monad Rev ----------------------------------------------------------------- -}
-
-newtype Rev a = Rev { unRev :: ReaderT FileSystemRoot IO a }
-
-instance Functor Rev where
-    fmap f c = Rev (fmap f (unRev c))
-
-instance Monad Rev where
-    c >>= f = Rev (unRev c >>= unRev . f)
-    return  = Rev . return
-    fail    = Rev . fail
-
-instance MonadFS Rev where
-    getRoot  = Rev ask
-    liftIO a = Rev (Tr.liftIO a)
-    runFS c  = runReaderT (unRev c)
-
-
-{- Monad Txn ----------------------------------------------------------------- -}
-
-newtype Txn a = Txn { unTxn :: ReaderT FileSystemRoot IO a }
-
-instance Functor Txn where
-    fmap f c = Txn (fmap f (unTxn c))
-
-instance Monad Txn where
-    c >>= f = Txn (unTxn c >>= unTxn . f)
-    return  = Txn . return
-    fail    = Txn . fail
-
-instance MonadFS Txn where
-    getRoot  = Txn ask
-    liftIO a = Txn (Tr.liftIO a)
-    runFS c  = runReaderT (unTxn c)
+    getRoot       :: m FileSystemRoot -- private
+    unsafeIOToFS  :: IO a -> m a
+    isTransaction :: m Bool
 
 
 {- functions and types ------------------------------------------------------- -}
@@ -109,17 +55,8 @@ newtype FileSystemRoot = FileSystemRoot (ForeignPtr SVN_FS_ROOT_T)
 data SVN_FS_ROOT_T
 
 
-foreign import ccall unsafe "svn_fs_revision_root"
-        _revision_root :: Ptr (Ptr SVN_FS_ROOT_T) -> Ptr SVN_FS_T -> SVN_REVNUM_T -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
-
 foreign import ccall unsafe "svn_fs_file_contents"
         _file_contents :: Ptr (Ptr SVN_STREAM_T) -> Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
-
-foreign import ccall unsafe "svn_fs_apply_text"
-        _apply_text :: Ptr (Ptr SVN_STREAM_T) -> Ptr SVN_FS_ROOT_T -> CString -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
-
-foreign import ccall unsafe "svn_fs_change_node_prop"
-        _change_node_prop :: Ptr SVN_FS_ROOT_T -> CString -> CString -> Ptr SVN_STRING_T -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
 
 foreign import ccall unsafe "svn_fs_node_proplist"
         _node_proplist :: Ptr (Ptr APR_HASH_T) -> Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
@@ -127,17 +64,17 @@ foreign import ccall unsafe "svn_fs_node_proplist"
 foreign import ccall unsafe "svn_fs_node_prop"
         _node_prop :: Ptr (Ptr SVN_STRING_T) -> Ptr SVN_FS_ROOT_T -> CString -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
 
-foreign import ccall unsafe "svn_fs_make_file"
-        _make_file :: Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
-
-foreign import ccall unsafe "svn_fs_make_dir"
-        _make_dir :: Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
-
 foreign import ccall unsafe "svn_fs_dir_entries"
         _dir_entries :: Ptr (Ptr APR_HASH_T) -> Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
 
-foreign import ccall unsafe "svn_fs_delete"
-        _delete :: Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
+foreign import ccall unsafe "svn_fs_check_path"
+        _check_path :: Ptr SVN_NODE_KIND_T -> Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
+
+foreign import ccall unsafe "svn_fs_is_dir"
+        _is_dir :: Ptr SVN_BOOLEAN_T -> Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
+
+foreign import ccall unsafe "svn_fs_is_file"
+        _is_file :: Ptr SVN_BOOLEAN_T -> Ptr SVN_FS_ROOT_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
 
 
 wrapFSRoot :: IO () -> Ptr SVN_FS_ROOT_T -> IO FileSystemRoot
@@ -155,184 +92,69 @@ touchFSRoot :: FileSystemRoot -> IO ()
 touchFSRoot (FileSystemRoot root) = touchForeignPtr root
 
 
-getRevisionRoot :: FileSystem -> Int -> IO FileSystemRoot
-getRevisionRoot fs revNum
-    = do pool <- newPool
-         alloca $ \ rootPtrPtr ->
-             withFSPtr fs $ \ fsPtr ->
-             withPoolPtr pool $ \ poolPtr ->
-                 (svnErr $ _revision_root rootPtrPtr fsPtr (fromIntegral revNum) poolPtr)
-                 >>  peek rootPtrPtr
-                 >>= (wrapFSRoot $
-                      -- root は pool にも fs にも依存する。
-                      touchPool pool >> touchFS fs)
-
-
-withRevision :: FileSystem -> Int -> Rev a -> IO a
-withRevision fs revNum c
-    = getRevisionRoot fs revNum
-      >>= runFS c
-
-
 getFileContents :: MonadFS m => FilePath -> m String
 getFileContents path
     = liftM L8.unpack $ getFileContentsLBS path
 
 
--- FIXME: もしこれが txn-root ならば遲延ストリーム讀出しが安全でなくな
--- るので、ファイル全體を正格に讀んでしまふ。
+-- もしこれが txn-root ならば遲延ストリーム讀出しが安全でなくなるので、
+-- ファイル全體を正格に讀んでしまふ。
 getFileContentsLBS :: MonadFS m => FilePath -> m LazyByteString
 getFileContentsLBS path
-    = do root <- getRoot
-         pool <- liftIO newPool
-         liftIO $ alloca $ \ ioPtrPtr ->
+    = do root  <- getRoot
+         isTxn <- isTransaction
+         pool  <- unsafeIOToFS newPool
+         unsafeIOToFS $ alloca $ \ ioPtrPtr ->
              withFSRootPtr root $ \ rootPtr ->
                  withCString path $ \ pathPtr ->
                      withPoolPtr pool $ \ poolPtr ->
                          (svnErr $ _file_contents ioPtrPtr rootPtr pathPtr poolPtr)
                          >>  peek ioPtrPtr
                          >>= wrapStream (touchPool pool)
-                         >>= sReadLBS
-
-
-applyText :: FilePath -> Maybe String -> String -> Txn ()
-applyText path resultMD5 contents
-    = applyTextLBS path resultMD5 (L8.pack contents)
-
-
-applyTextLBS :: FilePath -> Maybe String -> LazyByteString -> Txn ()
-applyTextLBS path resultMD5 contents
-    = do root <- getRoot
-         pool <- liftIO newPool
-         liftIO $ alloca $ \ ioPtrPtr ->
-             withFSRootPtr root      $ \ rootPtr      ->
-             withCString   path      $ \ pathPtr      ->
-             withCString'  resultMD5 $ \ resultMD5Ptr ->
-             withPoolPtr   pool      $ \ poolPtr      ->
-             do svnErr $ _apply_text ioPtrPtr rootPtr pathPtr resultMD5Ptr poolPtr
-                io <- wrapStream (touchPool pool) =<< peek ioPtrPtr
-                sWriteLBS io contents
-                sClose io
-    where
-      withCString' :: Maybe String -> (CString -> IO a) -> IO a
-      withCString' Nothing    f = f nullPtr
-      withCString' (Just str) f = withCString str f
-
-
-changeNodeProp :: FilePath -> String -> String -> Txn ()
-changeNodeProp path name value
-    = changeNodePropBS path name (B8.pack value)
-
-
-changeNodePropBS :: FilePath -> String -> ByteString -> Txn ()
-changeNodePropBS path name value
-    = do root <- getRoot
-         pool <- liftIO newPool
-         liftIO $ withFSRootPtr root $ \ rootPtr ->
-             withCString   path  $ \ pathPtr  ->
-             withCString   name  $ \ namePtr  ->
-             withSvnString value $ \ valuePtr ->
-             withPoolPtr   pool  $ \ poolPtr  ->
-             svnErr $ _change_node_prop rootPtr pathPtr namePtr valuePtr poolPtr
-
-
-changeNodePropLBS :: FilePath -> String -> LazyByteString -> Txn ()
-changeNodePropLBS path name (LPS xs)
-    = changeNodePropBS path name (B8.concat xs)
+                         >>= (if isTxn then
+                                  sStrictReadLBS
+                              else
+                                  sReadLBS)
 
 
 getNodePropList :: MonadFS m => FilePath -> m [(String, String)]
 getNodePropList path
-    = getNodePropListBS path
-      >>=
-      return . map (\ (name, value)
-                        -> (name, B8.unpack value))
-
-
-getNodePropListBS :: MonadFS m => FilePath -> m [(String, ByteString)]
-getNodePropListBS path
     = do root <- getRoot
-         pool <- liftIO newPool
-         liftIO $ alloca $ \ hashPtrPtr ->
+         pool <- unsafeIOToFS newPool
+         unsafeIOToFS $ alloca $ \ hashPtrPtr ->
              withFSRootPtr root $ \ rootPtr ->
              withCString   path $ \ pathPtr ->
              withPoolPtr   pool $ \ poolPtr ->
-                 do svnErr $ _node_proplist hashPtrPtr rootPtr pathPtr poolPtr
-                    hash <- wrapHash (touchPool pool) =<< peek hashPtrPtr
-                    mapHash' peekEntry hash
-    where
-      peekEntry :: (String, Ptr SVN_STRING_T) -> IO (String, ByteString)
-      peekEntry (name, valPtr)
-          = do value <- peekSvnString valPtr
-               return (name, value)
-
-
-getNodePropListLBS :: MonadFS m => FilePath -> m [(String, LazyByteString)]
-getNodePropListLBS path
-    = getNodePropListBS path
-      >>=
-      return . map (\ (name, value)
-                        -> (name, LPS [value]))
+             do svnErr $ _node_proplist hashPtrPtr rootPtr pathPtr poolPtr
+                hash <- wrapHash (touchPool pool) =<< peek hashPtrPtr
+                mapHash' (\ (n, v)
+                              -> peekSvnString v
+                                 >>=
+                                 return . ((,) n) . B8.unpack) hash
 
 
 getNodeProp :: MonadFS m => FilePath -> String -> m (Maybe String)
 getNodeProp path name
-    = getNodePropBS path name >>= return . fmap B8.unpack
-
-
-getNodePropBS :: MonadFS m => FilePath -> String -> m (Maybe ByteString)
-getNodePropBS path name
     = do root <- getRoot
-         pool <- liftIO newPool
-         liftIO $ alloca $ \ valPtrPtr ->
+         pool <- unsafeIOToFS newPool
+         unsafeIOToFS $ alloca $ \ valPtrPtr ->
              withFSRootPtr root $ \ rootPtr ->
              withCString   path $ \ pathPtr ->
              withCString   name $ \ namePtr ->
              withPoolPtr   pool $ \ poolPtr ->
                  do svnErr $ _node_prop valPtrPtr rootPtr pathPtr namePtr poolPtr
-                    peekSvnString' =<< peek valPtrPtr
-
-
-getNodePropLBS :: MonadFS m => FilePath -> String -> m (Maybe LazyByteString)
-getNodePropLBS path name
-    = getNodePropBS path name >>= return . fmap (\ bs -> LPS [bs])
-
-
-makeFile :: FilePath -> Txn ()
-makeFile path
-    = do root <- getRoot
-         pool <- liftIO newPool
-         liftIO $ withFSRootPtr root $ \ rootPtr ->
-             withCString path $ \ pathPtr ->
-             withPoolPtr pool $ \ poolPtr ->
-             svnErr $ _make_file rootPtr pathPtr poolPtr
-
-
-makeDirectory :: FilePath -> Txn ()
-makeDirectory path
-    = do root <- getRoot
-         pool <- liftIO newPool
-         liftIO $ withFSRootPtr root $ \ rootPtr ->
-             withCString path $ \ pathPtr ->
-             withPoolPtr pool $ \ poolPtr ->
-             svnErr $ _make_dir rootPtr pathPtr poolPtr
-
-
-deleteEntry :: FilePath -> Txn ()
-deleteEntry path
-    = do root <- getRoot
-         pool <- liftIO newPool
-         liftIO $ withFSRootPtr root $ \ rootPtr ->
-             withCString path $ \ pathPtr ->
-             withPoolPtr pool $ \ poolPtr ->
-             svnErr $ _delete rootPtr pathPtr poolPtr
+                    prop <- peekSvnString' =<< peek valPtrPtr
+                    -- prop は pool の中から讀み取られるので、それが濟
+                    -- むまで pool が死んでは困る。
+                    touchPool pool
+                    return $ fmap B8.unpack prop
 
 
 getDirEntries :: MonadFS m => FilePath -> m [DirEntry]
 getDirEntries path
     = do root <- getRoot
-         pool <- liftIO newPool
-         liftIO $ alloca $ \ hashPtrPtr ->
+         pool <- unsafeIOToFS newPool
+         unsafeIOToFS $ alloca $ \ hashPtrPtr ->
              withFSRootPtr root $ \ rootPtr ->
              withCString   path $ \ pathPtr ->
              withPoolPtr   pool $ \ poolPtr ->
@@ -341,3 +163,38 @@ getDirEntries path
              >>= wrapHash (touchFSRoot root)
              >>= hashToValues
 
+
+checkPath :: MonadFS m => FilePath -> m NodeKind
+checkPath path
+    = do root <- getRoot
+         pool <- unsafeIOToFS newPool
+         unsafeIOToFS $ alloca $ \ kindPtr ->
+             withFSRootPtr root $ \ rootPtr ->
+             withCString   path $ \ pathPtr ->
+             withPoolPtr   pool $ \ poolPtr ->
+                 do svnErr $ _check_path kindPtr rootPtr pathPtr poolPtr
+                    return . unmarshalNodeKind =<< peek kindPtr
+
+
+isDirectory :: MonadFS m => FilePath -> m Bool
+isDirectory path
+    = do root <- getRoot
+         pool <- unsafeIOToFS newPool
+         unsafeIOToFS $ alloca $ \ boolPtr ->
+             withFSRootPtr root $ \ rootPtr ->
+             withCString   path $ \ pathPtr ->
+             withPoolPtr   pool $ \ poolPtr ->
+                 do svnErr $ _is_dir boolPtr rootPtr pathPtr poolPtr
+                    return . unmarshalBool =<< peek boolPtr
+
+
+isFile :: MonadFS m => FilePath -> m Bool
+isFile path
+    = do root <- getRoot
+         pool <- unsafeIOToFS newPool
+         unsafeIOToFS $ alloca $ \ boolPtr ->
+             withFSRootPtr root $ \ rootPtr ->
+             withCString   path $ \ pathPtr ->
+             withPoolPtr   pool $ \ poolPtr ->
+                 do svnErr $ _is_file boolPtr rootPtr pathPtr poolPtr
+                    return . unmarshalBool =<< peek boolPtr

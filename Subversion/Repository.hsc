@@ -24,7 +24,6 @@ import           Foreign.Storable
 import           GHC.ForeignPtr   as GF
 import           Subversion.Config
 import           Subversion.FileSystem
-import           Subversion.FileSystem.Root
 import           Subversion.FileSystem.Transaction
 import           Subversion.Hash
 import           Subversion.Error
@@ -55,10 +54,10 @@ foreign import ccall unsafe "svn_repos_fs_commit_txn"
         _fs_commit_txn :: Ptr CString -> Ptr SVN_REPOS_T -> Ptr SVN_REVNUM_T -> Ptr SVN_FS_TXN_T -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
 
 
-wrapRepos :: Pool -> Ptr SVN_REPOS_T -> IO Repository
-wrapRepos pool reposPtr
+wrapRepos :: IO () -> Ptr SVN_REPOS_T -> IO Repository
+wrapRepos finalizer reposPtr
     = do repos <- newForeignPtr_ reposPtr
-         GF.addForeignPtrConcFinalizer repos $ touchPool pool
+         GF.addForeignPtrConcFinalizer repos finalizer
          return $ Repository repos
 
 
@@ -75,9 +74,9 @@ openRepository path
     = do pool <- newPool
          alloca $ \ reposPtrPtr ->
              withCString path $ \ pathPtr ->
-                 withPoolPtr pool $ \ poolPtr ->
-                     do svnErr $ _open reposPtrPtr pathPtr poolPtr
-                        wrapRepos pool =<< peek reposPtrPtr
+             withPoolPtr pool $ \ poolPtr ->
+                 do svnErr $ _open reposPtrPtr pathPtr poolPtr
+                    wrapRepos (touchPool pool) =<< peek reposPtrPtr
 
 
 createRepository :: FilePath -> [(String, Config)] -> [(String, String)] -> IO Repository
@@ -85,25 +84,26 @@ createRepository path configPairs fsConfigPairs
     = do pool <- newPool
          alloca $ \ reposPtrPtr ->
              withCString path $ \ pathPtr ->
-                 withPoolPtr pool $ \ poolPtr ->
-                     do config   <- pairsToHash configPairs
-                        fsConfig <- pairsToHash fsConfigPairs
-                        svnErr (_create
-                                reposPtrPtr
-                                pathPtr
-                                nullPtr
-                                nullPtr
-                                (unsafeHashToPtr config)
-                                (unsafeHashToPtr fsConfig)
-                                poolPtr)
-                        repos <- wrapRepos pool =<< peek reposPtrPtr
+             withPoolPtr pool $ \ poolPtr ->
+                 do config   <- pairsToHash configPairs
+                    fsConfig <- pairsToHash fsConfigPairs
+                    svnErr (_create
+                            reposPtrPtr
+                            pathPtr
+                            nullPtr
+                            nullPtr
+                            (unsafeHashToPtr config)
+                            (unsafeHashToPtr fsConfig)
+                            poolPtr)
 
-                        -- config と fsConfig には、repos が死ぬまでは
-                        -- 生きてゐて慾しい。
-                        GF.addForeignPtrConcFinalizer (case repos of Repository x -> x)
-                              $ (touchHash config >> touchHash fsConfig)
+                    repos <- wrapRepos (touchPool pool) =<< peek reposPtrPtr
 
-                        return repos
+                    -- config と fsConfig には、repos が死ぬまでは生き
+                    -- てゐて慾しい。
+                    GF.addForeignPtrConcFinalizer (case repos of Repository x -> x)
+                          $ (touchHash config >> touchHash fsConfig)
+
+                    return repos
 
 
 deleteRepository :: FilePath -> IO ()
@@ -115,10 +115,10 @@ deleteRepository path
 
 
 getRepositoryFS :: Repository -> IO FileSystem
-getRepositoryFS (Repository repos)
-    = withForeignPtr repos $ \ reposPtr ->
+getRepositoryFS repos
+    = withReposPtr repos $ \ reposPtr ->
       -- svn_fs_t* より先に svn_repos_t* が解放されては困る
-      _fs reposPtr >>= wrapFS repos
+      _fs reposPtr >>= wrapFS (touchRepos repos)
 
 
 beginTxn :: Repository -> Int -> String -> String -> IO Transaction
@@ -186,8 +186,7 @@ doReposTxn repos revNum author logMsg c
 
       tryTxn :: Transaction -> IO (Either FilePath Int)
       tryTxn txn
-          = do root <- getTransactionRoot txn
-               runFS c root
+          = do runTxn c txn
                
                -- Good. We've got no exceptions during the computation
                -- of Txn (). Now let us commit the transaction.

@@ -87,20 +87,24 @@ throwSvnErr = throwIO . DynException . toDyn
 
 
 data SvnErrCode
-    = AprENOENT
+    = AprEEXIST
+    | AprENOENT
     | ReposLocked
     | FsAlreadyExists
     | FsConflict
+    | FsNoSuchRevision
     | FsNotDirectory
     | FsNotFound
     | UnknownError !Int
       deriving (Show, Eq, Typeable)
 
 statusToErrCode :: APR_STATUS_T -> SvnErrCode
-statusToErrCode (#const APR_ENOENT               ) = AprENOENT
-statusToErrCode (#const SVN_ERR_REPOS_LOCKED     ) = ReposLocked
-statusToErrCode (#const SVN_ERR_FS_ALREADY_EXISTS) = FsAlreadyExists
-statusToErrCode (#const SVN_ERR_FS_CONFLICT      ) = FsConflict
-statusToErrCode (#const SVN_ERR_FS_NOT_DIRECTORY ) = FsNotDirectory
-statusToErrCode (#const SVN_ERR_FS_NOT_FOUND     ) = FsNotFound
-statusToErrCode n                                  = UnknownError (fromIntegral n)
+statusToErrCode (#const APR_EEXIST                 ) = AprEEXIST
+statusToErrCode (#const APR_ENOENT                 ) = AprENOENT
+statusToErrCode (#const SVN_ERR_REPOS_LOCKED       ) = ReposLocked
+statusToErrCode (#const SVN_ERR_FS_ALREADY_EXISTS  ) = FsAlreadyExists
+statusToErrCode (#const SVN_ERR_FS_CONFLICT        ) = FsConflict
+statusToErrCode (#const SVN_ERR_FS_NO_SUCH_REVISION) = FsNoSuchRevision
+statusToErrCode (#const SVN_ERR_FS_NOT_DIRECTORY   ) = FsNotDirectory
+statusToErrCode (#const SVN_ERR_FS_NOT_FOUND       ) = FsNotFound
+statusToErrCode n                                    = UnknownError (fromIntegral n)

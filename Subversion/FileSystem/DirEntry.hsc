@@ -1,9 +1,11 @@
 {- -*- haskell -*- -}
 
+-- |This module only defines the 'DirEntry' type.
+
 #include "HsSVN.h"
 
 module Subversion.FileSystem.DirEntry
-    ( DirEntry
+    ( DirEntry(..)
     )
     where
 
@@ -12,13 +14,14 @@ import           Foreign.Storable
 import           Subversion.Hash
 import           Subversion.Types
 
-
--- svn_fs_dirent_t.id is currently unavailable in this binding. Add
--- one if you really need it.
+-- |The type of a Subversion directory entry.
+--
+-- Note that svn_fs_dirent_t.id is currently unavailable in this
+-- binding. Add one if you really need it.
 data DirEntry
     = DirEntry {
-        entName :: String
-      , entKind :: NodeKind
+        entName :: String   -- ^ The name of this directory entry.
+      , entKind :: NodeKind -- ^ The node kind.
       }
     deriving (Show, Eq)
 

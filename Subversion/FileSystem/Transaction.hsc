@@ -222,6 +222,7 @@ setNodeProp path name valStr
              svnErr $ _change_node_prop rootPtr pathPtr namePtr valuePtr poolPtr
 
 
+-- FIXME: String を渡す事についての迷ひを書く
 applyText :: FilePath -> Maybe String -> String -> Txn ()
 applyText path resultMD5 contents
     = applyTextLBS path resultMD5 (L8.pack contents)

@@ -1,17 +1,23 @@
 {- -*- haskell -*- -}
 
+-- #prune
+
+-- |Common exception handling for Subversion. The C API of the
+-- Subversion returns an error as a function result, but in HsSVN
+-- errors are thrown as a DynException.
+
 #include "HsSVN.h"
 
 module Subversion.Error
     ( SvnError
-    , SVN_ERROR_T
+    , SVN_ERROR_T -- private
 
-    , wrapSvnError
+    , wrapSvnError -- private
 
     , svnErrCode
     , svnErrMsg
 
-    , svnErr
+    , svnErr -- private
 
     , throwSvnErr
 
@@ -26,7 +32,7 @@ import           Foreign.C.String
 import           Foreign.C.Types
 import           Subversion.Types
 
-
+-- |@'SvnError'@ represents a Subversion error.
 newtype SvnError
     = SvnError (ForeignPtr SVN_ERROR_T)
       deriving (Typeable)
@@ -48,7 +54,7 @@ maxErrMsgLen = 255
 withSvnErrorPtr :: SvnError -> (Ptr SVN_ERROR_T -> IO a) -> IO a
 withSvnErrorPtr (SvnError err) = withForeignPtr err
 
-
+-- |@'svnErrCode' err@ returns a 'SvnErrCode' for an error object.
 svnErrCode :: SvnError -> SvnErrCode
 svnErrCode err
     = unsafePerformIO $
@@ -56,7 +62,7 @@ svnErrCode err
       do num <- (#peek svn_error_t, apr_err) errPtr
          return $ statusToErrCode num
 
-
+-- |@'svnErrMsg' err@ returns an error message for an error object.
 svnErrMsg :: SvnError -> String
 svnErrMsg err
     = unsafePerformIO $
@@ -81,22 +87,35 @@ svnErr f
            Nothing -> return ()
            Just e  -> throwSvnErr e
 
-
+-- |@'throwSvnErr' err@ throws an 'SvnError' object in an IO
+-- monad. You usually don't need to use this directly.
 throwSvnErr :: SvnError -> IO a
 throwSvnErr = throwIO . DynException . toDyn
 
-
+-- |@'SvnErrCode'@ represents a Subversion error code. As you see, not
+-- all errors are translated to Haskell constructors yet. Uncovered
+-- error codes are temporarily represented as @'UnknownError' num@.
 data SvnErrCode
-    = AprEEXIST
-    | AprENOENT
-    | ReposLocked
-    | FsAlreadyExists
-    | FsConflict
-    | FsNoSuchRevision
-    | FsNotDirectory
-    | FsNotFile
-    | FsNotFound
-    | UnknownError !Int
+    = AprEEXIST         -- ^ APR EEXIST error: typically it means
+                        --   something you tried to create was already
+                        --   there.
+    | AprENOENT         -- ^ APR ENOENT error: typically it means
+                        --   something you tried to use wasn't there.
+    | ReposLocked       -- ^ The repository was locked, perhaps for db
+                        --   recovery.
+    | FsAlreadyExists   -- ^ The item already existed in filesystem.
+    | FsConflict        -- ^ Merge conflict has occured during commit.
+    | FsNoSuchRevision  -- ^ It was an invalid filesystem revision
+                        --   number.
+    | FsNotDirectory    -- ^ It was not a filesystem directory entry.
+    | FsNotFile         -- ^ It was not a filesystem file entry.
+    | FsNotFound        -- ^ It wasn't there in filesystem.
+    | UnknownError !Int -- ^ Any other errors than above. You
+                        --   shouldn't rely on the absence of
+                        --   appropriate 'SvnErrCode' constructors
+                        --   because they may be added in the future
+                        --   version of HsSVN. If that happens to you,
+                        --   your code stops working.
       deriving (Show, Eq, Typeable)
 
 statusToErrCode :: APR_STATUS_T -> SvnErrCode

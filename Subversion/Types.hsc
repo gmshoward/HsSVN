@@ -1,5 +1,9 @@
 {- -*- haskell -*- -}
 
+-- #prune
+
+-- |Some type definitions for Subversion.
+
 #include "HsSVN.h"
 
 module Subversion.Types
@@ -16,10 +20,10 @@ module Subversion.Types
     , marshalBool
     , unmarshalBool
 
-    , NodeKind(..)
+    , NodeKind(..) -- public
     , unmarshalNodeKind
 
-    , Version
+    , Version(..) -- public
     , peekVersion
     )
     where
@@ -50,11 +54,11 @@ unmarshalBool :: SVN_BOOLEAN_T -> Bool
 unmarshalBool (#const TRUE ) = True
 unmarshalBool (#const FALSE) = False
 
-
+-- |@'NodeKind'@ represents a type of node in Subversion filesystem.
 data NodeKind
-    = NoNode
-    | FileNode
-    | DirNode
+    = NoNode   -- ^ The node is absent.
+    | FileNode -- ^ The node is a file.
+    | DirNode  -- ^ The node is a directory.
       deriving (Show, Eq)
 
 unmarshalNodeKind :: SVN_NODE_KIND_T -> NodeKind
@@ -62,12 +66,12 @@ unmarshalNodeKind (#const svn_node_none) = NoNode
 unmarshalNodeKind (#const svn_node_file) = FileNode
 unmarshalNodeKind (#const svn_node_dir ) = DirNode
 
-
+-- |@'Version'@ is version.
 data Version = Version {
-      verMajor :: Int
-    , verMinor :: Int
-    , verPatch :: Int
-    , verTag   :: String
+      verMajor :: Int    -- ^ Major version number.
+    , verMinor :: Int    -- ^ Minor version number.
+    , verPatch :: Int    -- ^ Patch number.
+    , verTag   :: String -- ^ The version tag.
     } deriving (Show, Eq)
 
 

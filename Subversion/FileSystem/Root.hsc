@@ -151,6 +151,7 @@ getFileMD5 path
       md5Len = (#const APR_MD5_DIGESTSIZE)
 
 
+-- FIXME: String を返す事についての迷ひを doc に書く
 getFileContents :: MonadFS m => FilePath -> m String
 getFileContents path
     = liftM L8.unpack $ getFileContentsLBS path

@@ -7,6 +7,7 @@
 #include <svn_error_codes.h>
 #include <svn_fs.h>
 #include <svn_pools.h>
+#include <svn_repos.h>
 
 /* initialization ************************************************************ */
 int HsSVN_initialize();

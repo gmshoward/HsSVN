@@ -1,4 +1,9 @@
 {- -*- haskell -*- -}
+
+-- #hide
+
+-- Internal use only.
+
 module Subversion.Stream
     ( Stream
     , SVN_STREAM_T
@@ -12,6 +17,9 @@ module Subversion.Stream
     , sRead
     , sReadBS
     , sReadLBS
+
+    , sStrictRead
+    , sStrictReadLBS
 
     , sWrite
     , sWriteBS
@@ -89,6 +97,11 @@ sRead io
     = liftM L8.unpack $ sReadLBS io
 
 
+sStrictRead :: Stream -> IO String
+sStrictRead io
+    = liftM L8.unpack $ sStrictReadLBS io
+
+
 sReadBS :: Stream -> Int -> IO ByteString
 sReadBS io maxLen
     = withStreamPtr io     $ \ ioPtr     ->
@@ -113,6 +126,23 @@ sReadLBS io = lazyRead >>= return . LPS
                   else
                     do bss <- lazyRead
                        return (bs:bss)
+
+
+sStrictReadLBS :: Stream -> IO LazyByteString
+sStrictReadLBS io = strictRead >>= return . LPS
+    where
+      chunkSize = 32 * 1024
+
+      strictRead = unsafeInterleaveIO loop
+
+      loop = do bs <- sReadBS io chunkSize
+                if B8.null bs then
+                    -- reached EOF
+                    return []
+                  else
+                    do bss <- strictRead
+                       return (bs:bss)
+
 
 
 sWrite :: Stream -> String -> IO ()

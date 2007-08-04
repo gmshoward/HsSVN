@@ -9,7 +9,7 @@ run: build
 	$(MAKE) -C examples run
 
 .setup-config: $(CABAL_FILE) configure Setup
-	env EXTRA_CPPFLAGS="-I/sw/include/subversion-1 -I/sw/include/apr-0" EXTRA_LDFLAGS="-L/sw/lib" ./Setup configure
+	env EXTRA_CPPFLAGS="-I/sw/include/subversion-1 -I/sw/include/apr-0" EXTRA_LDFLAGS="-L/sw/lib" ./Setup configure -p
 
 configure: aclocal.m4 configure.ac
 	autoconf

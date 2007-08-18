@@ -1,13 +1,21 @@
 {- -*- haskell -*- -}
-module Subversion.FileSystem.Revision
-    ( Rev
 
+-- |An interface to functions that work on an existing
+-- (i.e. read-only) revision in a filesystem.
+
+module Subversion.FileSystem.Revision
+    ( -- * Type
+      Rev
+
+      -- * Running the monad
     , withRevision
 
+      -- * Accessing revision property
     , getRevisionProp
     , getRevisionPropList
     , setRevisionProp
 
+      -- * Getting node history
     , getNodeHistory
     )
     where
@@ -30,6 +38,12 @@ import           System.IO.Unsafe
 
 {- Monad Rev ----------------------------------------------------------------- -}
 
+-- |@'Rev' a@ is a FS monad which reads data from an existing revision
+-- and finally returns @a@. See 'Subversion.FileSystem.Root.MonadFS'.
+--
+-- Since 'Rev' monad does no transactions,
+-- 'Subversion.FileSystem.Root.unsafeIOToFS' isn't really unsafe. You
+-- can do any I\/O actions in the monad if you wish.
 newtype Rev a = Rev { unRev :: ReaderT FileSystemRoot IO a }
 
 instance Functor Rev where
@@ -84,14 +98,16 @@ getRevisionRoot fs revNum
                     wrapFSRoot (touchPool pool >> touchFS fs)
                         =<< peek rootPtrPtr
 
-
-withRevision :: FileSystem -> Int -> Rev a -> IO a
+-- |@'withRevision'@ runs a 'Rev' monad in an IO monad.
+withRevision :: FileSystem -> RevNum -> Rev a -> IO a
 withRevision fs revNum c
     = getRevisionRoot fs revNum
       >>= runReaderT (unRev c)
 
-
-getRevisionProp :: FileSystem -> Int -> String -> IO (Maybe String)
+-- |@'getRevisionProp' fs revNum propName@ returns the value of the
+-- property named @propName@ on revision @revNum@ in the filesystem
+-- @fs@.
+getRevisionProp :: FileSystem -> RevNum -> String -> IO (Maybe String)
 getRevisionProp fs revNum name
     = do pool <- newPool
          alloca $ \ valPtrPtr ->
@@ -105,8 +121,9 @@ getRevisionProp fs revNum name
                 touchPool pool
                 return $ fmap B8.unpack prop
 
-
-getRevisionPropList :: FileSystem -> Int -> IO [(String, String)]
+-- |@'getRevisionPropList' fs revNum@ returns the entire property list
+-- of revision @revNum@ in filesystem @fs@.
+getRevisionPropList :: FileSystem -> RevNum -> IO [(String, String)]
 getRevisionPropList fs revNum
     = do pool <- newPool
          alloca $ \ hashPtrPtr ->
@@ -119,8 +136,15 @@ getRevisionPropList fs revNum
                                  >>=
                                  return . ((,) n) . B8.unpack) hash
 
-
-setRevisionProp :: FileSystem -> Int -> String -> Maybe String -> IO ()
+-- |@'setRevisionProp'@ changes, adds or deletes a property on a
+-- revision. Note that revision properties are non-historied: you can
+-- change them after the revision has been comitted. They are not
+-- protected via transactions.
+setRevisionProp :: FileSystem   -- ^ The transaction
+                -> RevNum       -- ^ The revision
+                -> String       -- ^ The property name
+                -> Maybe String -- ^ The property value
+                -> IO ()
 setRevisionProp fs revNum name valStr
     = do pool <- newPool
          let value = fmap B8.pack valStr
@@ -130,8 +154,27 @@ setRevisionProp fs revNum name valStr
              withPoolPtr    pool  $ \ poolPtr  ->
              svnErr $ _change_rev_prop fsPtr (fromIntegral revNum) namePtr valuePtr poolPtr
 
-
-getNodeHistory :: Bool -> FilePath -> Rev [(FilePath, Int)]
+-- |@'getNodeHistory'@ /lazily/ reads the change history of given node
+-- in a filesystem. The most recent change comes first in the
+-- resulting list.
+--
+-- The revisions returned for a path will be older than or the same
+-- age as the revision of that path in the target revision of 'Rev'
+-- monad. That is, if the 'Rev' monad is running on revision @X@, and
+-- the path was modified in some revisions younger than @X@, those
+-- revisions younger than @X@ will not be included for the path.
+getNodeHistory
+    :: Bool                     -- ^ If this is true, stepping
+                                --   backwards in history would cross
+                                --   a copy operation. This is usually
+                                --   the desired behavior.
+    -> FilePath                 -- ^ The path to node you want to read
+                                --   history.
+    -> Rev [(RevNum, FilePath)] -- ^ A list of @(revNum, nodePath)@:
+                                --   the node was modified somehow at
+                                --   revision @revNum@, and at that
+                                --   time the node was located on
+                                --   @nodePath@.
 getNodeHistory crossCopies path
     = do pool <- unsafeIOToFS $ newPool
          root <- getRoot
@@ -144,7 +187,7 @@ getNodeHistory crossCopies path
     where
       lazyReadHist pool histPtr = unsafeInterleaveIO $ readHist pool histPtr
 
-      readHist :: Pool -> Ptr SVN_FS_HISTORY_T -> IO [(FilePath, Int)]
+      readHist :: Pool -> Ptr SVN_FS_HISTORY_T -> IO [(RevNum, FilePath)]
       readHist pool histPtr
           = alloca           $ \ histPtrPtr ->
             withPoolPtr pool $ \ poolPtr    ->
@@ -160,12 +203,12 @@ getNodeHistory crossCopies path
                       xs <- lazyReadHist pool got
                       return (x:xs)
 
-      getHistLocation :: Ptr SVN_FS_HISTORY_T -> Pool -> IO (FilePath, Int)
+      getHistLocation :: Ptr SVN_FS_HISTORY_T -> Pool -> IO (RevNum, FilePath)
       getHistLocation histPtr pool
           = alloca           $ \ pathPtrPtr ->
             alloca           $ \ revNumPtr  ->
             withPoolPtr pool $ \ poolPtr    ->
             do svnErr $ _history_location pathPtrPtr revNumPtr histPtr poolPtr
-               path   <- peekCString           =<< peek pathPtrPtr
                revNum <- return . fromIntegral =<< peek revNumPtr
-               return (path, revNum)
+               path   <- peekCString           =<< peek pathPtrPtr
+               return (revNum, path)

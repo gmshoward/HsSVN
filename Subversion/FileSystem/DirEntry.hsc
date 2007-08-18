@@ -16,7 +16,7 @@ import           Subversion.Types
 
 -- |The type of a Subversion directory entry.
 --
--- Note that svn_fs_dirent_t.id is currently unavailable in this
+-- Note that @svn_fs_dirent_t.id@ is currently unavailable in this
 -- binding. Add one if you really need it.
 data DirEntry
     = DirEntry {

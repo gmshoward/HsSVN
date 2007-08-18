@@ -1,9 +1,15 @@
 {- -*- haskell -*- -}
 
+-- #prune
+
+-- |An interface to functions that work on both existing revisions and
+-- ongoing transactions in a filesystem.
+
 #include "HsSVN.h"
 
 module Subversion.FileSystem.Root
-    ( MonadFS(..)
+    ( -- * Class
+      MonadFS(..)
 
     , FileSystemRoot -- private
     , SVN_FS_ROOT_T -- private
@@ -13,21 +19,27 @@ module Subversion.FileSystem.Root
 
     , getRootFS -- private
 
+      -- * Getting file content and others
     , getFileLength
     , getFileMD5
 
     , getFileContents
     , getFileContentsLBS
 
-    , getNodeProp
-    , getNodePropList
-
-    , getDirEntries
-    , getPathsChanged
-
+      -- * Getting node type
     , checkPath
     , isDirectory
     , isFile
+
+      -- * Getting node property
+    , getNodeProp
+    , getNodePropList
+
+      -- * Getting nodes in directory
+    , getDirEntries
+
+      -- * Getting change list
+    , getPathsChanged
     )
     where
 
@@ -57,9 +69,23 @@ import           Subversion.Types
 
 {- class MonadFS ------------------------------------------------------------- -}
 
+-- |@'MonadFS' m@ is a monad which holds internally either an existing
+-- revision or ongoing transaction.
 class Monad m => MonadFS m where
-    getRoot       :: m FileSystemRoot -- private
+    -- private
+    getRoot       :: m FileSystemRoot
+
+    -- |@'unsafeIOToFS'@ runs an IO monad in 'MonadFS'.
+    -- 
+    -- This is unsafe if the monad is a transaction monad. When a
+    -- transaction fails before getting commited, all transactional
+    -- operations are cancelled at once. But if you had launched
+    -- missiles with 'unsafeIOToFS' during the transaction, your
+    -- missiles can never go back. So you must use this carefully.
     unsafeIOToFS  :: IO a -> m a
+
+    -- |@'isTransaction'@ returns True iff the monad is a transaction
+    -- monad.
     isTransaction :: m Bool
 
 
@@ -124,7 +150,7 @@ getRootFS root
       -- 實際には root が生きてゐる限り fs は死なないのだが、念の爲。
       wrapFS (touchFSRoot root) =<< _root_fs rootPtr
 
-
+-- |@'getFileLength' path@ returns the length of file @path@.
 getFileLength :: MonadFS m => FilePath -> m Integer
 getFileLength path
     = do root <- getRoot
@@ -136,7 +162,11 @@ getFileLength path
              do svnErr $ _file_length lenPtr rootPtr pathPtr poolPtr
                 return . toInteger =<< peek lenPtr
 
-
+-- |@'getFileMD5' path@ returns the MD5 checksum of file @path@. If
+-- the filesystem does not have a prerecorded checksum for @path@, it
+-- doesn't calculate a checksum dynamically, just puts all 0's into
+-- the resulting digest. (By convention, the all-zero checksum is
+-- considered to match any checksum.)
 getFileMD5 :: MonadFS m => FilePath -> m [Word8]
 getFileMD5 path
     = do root <- getRoot
@@ -151,14 +181,31 @@ getFileMD5 path
       md5Len = (#const APR_MD5_DIGESTSIZE)
 
 
--- FIXME: String を返す事についての迷ひを doc に書く
+-- |@'getFileContents' path@ returns the content of file @path@.
+--
+-- If this is a non-transactional monad (that is, a monad whose
+-- 'isTransaction' returns 'Prelude.False'), it reads the content
+-- /lazilly/. But if this is a transactional monad, 'getFileContents'
+-- does the operation /strictly/: I mean it loads the entire file onto
+-- the memory! This is because @svn_fs_file_contents()@ in the
+-- libsvn_fs doesn't guarantee, when we are in a transaction, that we
+-- can progressively read a file which is suddenly modified in the
+-- same transaction during the progressive reading.
+--
+-- I think 'getFileContents' might have to return
+-- @['Data.Word.Word8']@ instead of 'Prelude.String' because every
+-- files in filesystem should be considered binary. Yes,
+-- 'Prelude.readFile' also returns 'Prelude.String' but this is an
+-- immature part of Haskell. I wish someday the GHC gets more clear
+-- distinction between binary data and an Unicode string, then I
+-- change the form of 'getFileContents' alike.
 getFileContents :: MonadFS m => FilePath -> m String
 getFileContents path
     = liftM L8.unpack $ getFileContentsLBS path
 
 
--- もしこれが txn-root ならば遲延ストリーム讀出しが安全でなくなるので、
--- ファイル全體を正格に讀んでしまふ。
+-- |@'getFileContentsLBS'@ does the same thing as 'getFileContents'
+-- but returns 'Data.ByteString.Base.LazyByteString' instead.
 getFileContentsLBS :: MonadFS m => FilePath -> m LazyByteString
 getFileContentsLBS path
     = do root  <- getRoot
@@ -176,7 +223,8 @@ getFileContentsLBS path
                               else
                                   sReadLBS)
 
-
+-- |@'getNodePropList' path@ returns the property list of @path@ in a
+-- revision or transaction.
 getNodePropList :: MonadFS m => FilePath -> m [(String, String)]
 getNodePropList path
     = do root <- getRoot
@@ -192,7 +240,8 @@ getNodePropList path
                                  >>=
                                  return . ((,) n) . B8.unpack) hash
 
-
+-- |@'getNodeProp' path propName@ returns the value of the property
+-- named @propName@ of @path@ in a revision or transaction.
 getNodeProp :: MonadFS m => FilePath -> String -> m (Maybe String)
 getNodeProp path name
     = do root <- getRoot
@@ -209,7 +258,8 @@ getNodeProp path name
                     touchPool pool
                     return $ fmap B8.unpack prop
 
-
+-- |@'getDirEntries' path@ returns a list containing the entries of
+-- the directory at @path@ in a revision or transaction.
 getDirEntries :: MonadFS m => FilePath -> m [DirEntry]
 getDirEntries path
     = do root <- getRoot
@@ -218,12 +268,13 @@ getDirEntries path
              withFSRootPtr root $ \ rootPtr ->
              withCString   path $ \ pathPtr ->
              withPoolPtr   pool $ \ poolPtr ->
-             (svnErr $ _dir_entries hashPtrPtr rootPtr pathPtr poolPtr)
-             >>  peek hashPtrPtr
-             >>= wrapHash (touchFSRoot root >> touchPool pool)
-             >>= hashToValues
+             do svnErr $ _dir_entries hashPtrPtr rootPtr pathPtr poolPtr
+                peek hashPtrPtr
+                    >>= wrapHash (touchFSRoot root >> touchPool pool)
+                    >>= hashToValues
 
-
+-- |@'getPathsChanged'@ returns a list containing descriptions of the
+-- paths changed under a revision or transaction.
 getPathsChanged :: MonadFS m => m [(FilePath, PathChange)]
 getPathsChanged
     = do root <- getRoot
@@ -236,7 +287,10 @@ getPathsChanged
                      >>= wrapHash (touchFSRoot root >> touchPool pool)
                      >>= hashToPairs
 
-
+-- |@'checkPath' path@ returns a 'Subversion.Types.NodeKind' for
+-- @path@. Unlike most other actions, 'checkPath' doesn't throw an
+-- error even if the @path@ doesn't point to an existent node: in that
+-- case it just returns 'Subversion.Types.NoNode'.
 checkPath :: MonadFS m => FilePath -> m NodeKind
 checkPath path
     = do root <- getRoot
@@ -248,7 +302,9 @@ checkPath path
                  do svnErr $ _check_path kindPtr rootPtr pathPtr poolPtr
                     return . unmarshalNodeKind =<< peek kindPtr
 
-
+-- |@'isDirectory' path@ returns 'Prelude.True' iff the @path@ points
+-- to a directory in a revision or transaction. It returns
+-- 'Prelude.False' for inexistent path.
 isDirectory :: MonadFS m => FilePath -> m Bool
 isDirectory path
     = do root <- getRoot
@@ -260,7 +316,9 @@ isDirectory path
                  do svnErr $ _is_dir boolPtr rootPtr pathPtr poolPtr
                     return . unmarshalBool =<< peek boolPtr
 
-
+-- |@'isFile' path@ returns 'Prelude.True' iff the @path@ points to a
+-- file in a revision or transaction. It returns 'Prelude.False' for
+-- inexistent path.
 isFile :: MonadFS m => FilePath -> m Bool
 isFile path
     = do root <- getRoot

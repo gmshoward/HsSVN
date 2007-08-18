@@ -1,7 +1,12 @@
 {- -*- haskell -*- -}
 
+-- #prune
+
+-- |An interface to functions that work on a filesystem transaction.
+
 module Subversion.FileSystem.Transaction
-    ( Txn
+    ( -- * Type 
+      Txn
 
     , Transaction -- private
     , SVN_FS_TXN_T -- private
@@ -13,15 +18,19 @@ module Subversion.FileSystem.Transaction
     , abortTxn -- private
     , getTransactionRoot -- private
 
+      -- * Accessing transaction property
     , getTxnProp
     , getTxnPropList
     , setTxnProp
 
+      -- * Changing content of file
     , applyText
     , applyTextLBS
 
+      -- * Changing node property
     , setNodeProp
 
+      -- * Creating, deleting and copying entry
     , makeFile
     , makeDirectory
 
@@ -49,6 +58,7 @@ import           Subversion.Hash
 import           Subversion.Pool
 import           Subversion.Stream
 import           Subversion.String
+import           Subversion.Types
 
 {- Monad Txn ----------------------------------------------------------------- -}
 
@@ -57,6 +67,8 @@ data TxnContext = TxnContext {
     , ctxRoot :: FileSystemRoot
     }
 
+-- |@'Txn' a@ is a FS monad which reads and updates data in filesystem
+-- and finally returns @a@. See 'Subversion.FileSystem.Root.MonadFS'.
 newtype Txn a = Txn { unTxn :: ReaderT TxnContext IO a }
 
 instance Functor Txn where
@@ -165,7 +177,8 @@ getTransactionRoot txn
                   -- root は pool にも txn にも依存する。
                   touchPool pool >> touchTxn txn)
 
-
+-- |@'getTxnProp' propName@ returns the value of the property named
+-- @propName@ on the transaction.
 getTxnProp :: String -> Txn (Maybe String)
 getTxnProp name
     = do txn  <- getTxn
@@ -181,7 +194,8 @@ getTxnProp name
                     touchPool pool
                     return $ fmap B8.unpack prop
 
-
+-- |@'getTxnPropList'@ returns the entire property list on the
+-- transaction.
 getTxnPropList :: Txn [(String, String)]
 getTxnPropList 
     = do txn  <- getTxn
@@ -196,7 +210,8 @@ getTxnPropList
                                      >>=
                                      return . ((,) n) . B8.unpack) hash
 
-
+-- |@'setTxnProp' propName propValue@ changes, adds or deletes a
+-- property on the transaction.
 setTxnProp :: String -> Maybe String -> Txn ()
 setTxnProp name valStr
     = do txn  <- getTxn
@@ -208,7 +223,8 @@ setTxnProp name valStr
              withPoolPtr    pool  $ \ poolPtr  ->
              svnErr $ _change_txn_prop txnPtr namePtr valuePtr poolPtr
 
-
+-- |@'setNodeProp' fpath propName propValue@ changes, adds or deletes
+-- a property named @propName@ on file @fpath@.
 setNodeProp :: FilePath -> String -> Maybe String -> Txn ()
 setNodeProp path name valStr
     = do root <- getRoot
@@ -222,12 +238,30 @@ setNodeProp path name valStr
              svnErr $ _change_node_prop rootPtr pathPtr namePtr valuePtr poolPtr
 
 
--- FIXME: String を渡す事についての迷ひを書く
-applyText :: FilePath -> Maybe String -> String -> Txn ()
+-- |@'applyText'@ replaces the content of file.
+applyText
+    :: FilePath     -- ^ The file to be replaced. If it does not exist
+                    --   in the transaction, 'applyText' throws an
+                    --   error. That is, you can't use this action to
+                    --   create new files; use 'makeFile' to create an
+                    --   empty file first.
+    -> Maybe String -- ^ The hex MD5 digest for the new content. It is
+                    --   ignored if 'Prelude.Nothing', but if not
+                    --   'Prelude.Nothing', it must match the checksum
+                    --   of the content; if it doesn't, 'applyText'
+                    --   throws an error.
+    -> String       -- ^ The new content. 
+                    --
+                    --   This argument is currently a 'Prelude.String'
+                    --   but someday it may be changed to
+                    --   @['Data.Word.Word8']@ or something alike. See
+                    --   'Subversion.FileSystem.Root.getFileContents'.
+    -> Txn ()
 applyText path resultMD5 contents
     = applyTextLBS path resultMD5 (L8.pack contents)
 
-
+-- |@'applyTextLBS'@ does the same thing as 'applyText' but takes
+-- 'Data.ByteString.Base.LazyByteString' instead.
 applyTextLBS :: FilePath -> Maybe String -> LazyByteString -> Txn ()
 applyTextLBS path resultMD5 contents
     = do root <- getRoot
@@ -246,7 +280,8 @@ applyTextLBS path resultMD5 contents
       withCString' Nothing    f = f nullPtr
       withCString' (Just str) f = withCString str f
 
-
+-- |@'makeFile' fpath@ creates a new file named @fpath@. The initial
+-- content of file is the empty string, and it has no properties.
 makeFile :: FilePath -> Txn ()
 makeFile path
     = do root <- getRoot
@@ -256,7 +291,8 @@ makeFile path
              withPoolPtr pool $ \ poolPtr ->
              svnErr $ _make_file rootPtr pathPtr poolPtr
 
-
+-- |@'makeDirectory' fpath@ creates a new directory named @fpath@. The
+-- new directory has no entries, and no properties.
 makeDirectory :: FilePath -> Txn ()
 makeDirectory path
     = do root <- getRoot
@@ -266,7 +302,15 @@ makeDirectory path
              withPoolPtr pool $ \ poolPtr ->
              svnErr $ _make_dir rootPtr pathPtr poolPtr
 
-
+-- |@'deleteEntry' fpath@ delete the node named @fpath@ in the
+-- transaction. If the node being deleted is a directory, its contents
+-- will be deleted recursively.
+--
+-- If the @fpath@ is missing from the transaction, 'deleteEntry'
+-- throws an error.
+--
+-- Attempting to remove the root directory also results in an error,
+-- even if the directory is empty.
 deleteEntry :: FilePath -> Txn ()
 deleteEntry path
     = do root <- getRoot
@@ -276,8 +320,10 @@ deleteEntry path
              withPoolPtr pool $ \ poolPtr ->
              svnErr $ _delete rootPtr pathPtr poolPtr
 
-
-copyEntry :: Int -> FilePath -> FilePath -> Txn ()
+-- |@'copyEntry' fromRevNum fromPath toPath@ creates a copy of file
+-- @fromPath@ in a revision @fromRevNum@ named @toPath@ in the
+-- transaction.
+copyEntry :: RevNum -> FilePath -> FilePath -> Txn ()
 copyEntry fromRevNum fromPath toPath
     = do toRoot <- getRoot
          fs     <- unsafeIOToFS $ getRootFS toRoot

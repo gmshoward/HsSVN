@@ -7,7 +7,9 @@
 #include "HsSVN.h"
 
 module Subversion.Types
-    ( APR_SIZE_T
+    ( RevNum
+
+    , APR_SIZE_T
     , APR_SSIZE_T
     , APR_STATUS_T
 
@@ -34,6 +36,8 @@ import           Foreign.C.String
 import           Foreign.Ptr
 import           Foreign.Storable
 
+-- |@'RevNum'@ represents a revision number.
+type RevNum = Int
 
 type APR_SIZE_T     = #type apr_size_t
 type APR_SSIZE_T    = #type apr_ssize_t

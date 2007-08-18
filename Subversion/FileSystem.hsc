@@ -251,7 +251,7 @@ getFileSystemPath fs
 -- |@'getYoungestRev' fs@ returns the number of the youngest revision
 -- in filesystem @fs@. The oldest revision in any filesystem is
 -- numbered zero.
-getYoungestRev :: FileSystem -> IO Int
+getYoungestRev :: FileSystem -> IO RevNum
 getYoungestRev fs
     = do pool <- newPool
          alloca $ \ revNumPtr ->

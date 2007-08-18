@@ -18,8 +18,8 @@ main = withSubversion $
                          $ do copyEntry rev "hello" "olleh"
 -}
 
-          hello <- withRevision fs 16 $
-                   getPathsChanged
+          hello <- withRevision fs 2 $
+                   getNodeHistory True "/hello"
           print hello
 
 {-

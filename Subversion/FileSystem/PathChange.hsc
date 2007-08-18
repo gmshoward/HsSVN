@@ -1,5 +1,7 @@
 {- -*- haskell -*- -}
 
+-- |This module only defines two types; 'PathChange' and 'ChangeKind'.
+
 #include "HsSVN.h"
 
 module Subversion.FileSystem.PathChange
@@ -13,30 +15,32 @@ import           Foreign.Storable
 import           Subversion.Hash
 import           Subversion.Types
 
-
--- svn_fs_path_change_t.node_rev_id is currently unavailable in this
--- binding. Add one if you really need it.
+-- |@'PathChange'@ describes a change in a revision occured on a path.
+-- 
+-- Note that @svn_fs_path_change_t.node_rev_id@ is currently
+-- unavailable in this binding. Add one if you really need it.
 data PathChange = PathChange {
-      pcChangeKind :: ChangeKind
-    , pcTextMod    :: Bool
-    , pcPropMod    :: Bool
+      pcChangeKind :: ChangeKind -- ^ Kind of change.
+    , pcTextMod    :: Bool       -- ^ Were there text modifications?
+    , pcPropMod    :: Bool       -- ^ Were there property modifications?
     } deriving (Show, Eq)
 
 
 type SVN_FS_PATH_CHANGE_KIND_T = #type svn_fs_path_change_kind_t
 
-data ChangeKind = ModifiedNode
-                | AddedNode
-                | DeletedNode
-                | ReplacedNode
+-- |The kind of change that occured on the path.
+data ChangeKind = ModifiedPath -- ^ defalut value
+                | AddedPath    -- ^ path added in txn
+                | DeletedPath  -- ^ path removed in txn
+                | ReplacedPath -- ^ path removed and re-added in txn
                   deriving (Show, Eq)
 
 
 unmarshalChangeKind :: SVN_FS_PATH_CHANGE_KIND_T -> ChangeKind
-unmarshalChangeKind (#const svn_fs_path_change_modify ) = ModifiedNode
-unmarshalChangeKind (#const svn_fs_path_change_add    ) = AddedNode
-unmarshalChangeKind (#const svn_fs_path_change_delete ) = DeletedNode
-unmarshalChangeKind (#const svn_fs_path_change_replace) = ReplacedNode
+unmarshalChangeKind (#const svn_fs_path_change_modify ) = ModifiedPath
+unmarshalChangeKind (#const svn_fs_path_change_add    ) = AddedPath
+unmarshalChangeKind (#const svn_fs_path_change_delete ) = DeletedPath
+unmarshalChangeKind (#const svn_fs_path_change_replace) = ReplacedPath
 
 
 instance HashValue PathChange where

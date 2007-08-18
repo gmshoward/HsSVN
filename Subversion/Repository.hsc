@@ -1,4 +1,8 @@
 {- -*- haskell -*- -}
+
+-- |An interface to repository, which is built on top of the
+-- filesystem.
+
 module Subversion.Repository
     ( Repository
 
@@ -30,7 +34,8 @@ import           Subversion.Error
 import           Subversion.Pool
 import           Subversion.Types
 
-
+-- |@'Repository'@ is an opaque object representing a Subversion
+-- repository.
 newtype Repository = Repository (ForeignPtr SVN_REPOS_T)
 data SVN_REPOS_T
 
@@ -68,7 +73,11 @@ withReposPtr (Repository repos) = withForeignPtr repos
 touchRepos :: Repository -> IO ()
 touchRepos (Repository repos) = touchForeignPtr repos
 
-
+-- |@'openRepository' fpath@ opens a Subversion repository at @fpath@.
+--
+-- It acquires a shared lock on the repository, and the lock will be
+-- removed by the garbage collector. If an exclusive lock is present,
+-- this blocks until it's gone.
 openRepository :: FilePath -> IO Repository
 openRepository path
     = do pool <- newPool
@@ -78,8 +87,17 @@ openRepository path
                  do svnErr $ _open reposPtrPtr pathPtr poolPtr
                     wrapRepos (touchPool pool) =<< peek reposPtrPtr
 
-
-createRepository :: FilePath -> [(String, Config)] -> [(String, String)] -> IO Repository
+-- |@'createRepository'@ creates a new Subversion repository, building
+-- the necessary directory structure, creating filesystem, and so on.
+createRepository
+    :: FilePath           -- ^ Where to create the repository.
+    -> [(String, Config)] -- ^ A list of @(categoryName, config)@
+                          --   tuples which represents a client
+                          --   configuration. It may be an empty list.
+    -> [(String, String)] -- ^ This list is passed to the
+                          --   filesystem. See
+                          --   'Subversion.FileSystem.createFileSystem'.
+    -> IO Repository
 createRepository path configPairs fsConfigPairs
     = do pool <- newPool
          alloca $ \ reposPtrPtr ->
@@ -105,7 +123,8 @@ createRepository path configPairs fsConfigPairs
 
                     return repos
 
-
+-- |@'deleteRepository' fpath@ destroys the Subversion repository at
+-- @fpath@.
 deleteRepository :: FilePath -> IO ()
 deleteRepository path
     = do pool <- newPool
@@ -113,7 +132,8 @@ deleteRepository path
              withPoolPtr pool $ \ poolPtr ->
                  svnErr $ _delete pathPtr poolPtr
 
-
+-- |@'getRepositoryFS' repos@ returns the filesystem associated with
+-- repository @repos@.
 getRepositoryFS :: Repository -> IO FileSystem
 getRepositoryFS repos
     = withReposPtr repos $ \ reposPtr ->
@@ -121,14 +141,14 @@ getRepositoryFS repos
       _fs reposPtr >>= wrapFS (touchRepos repos)
 
 
-beginTxn :: Repository -> Int -> String -> String -> IO Transaction
+beginTxn :: Repository -> RevNum -> String -> Maybe String -> IO Transaction
 beginTxn repos revNum author logMsg
     = do pool <- newPool
          alloca $ \ txnPtrPtr ->
-             withReposPtr repos $ \ reposPtr  ->
-             withCString author $ \ authorPtr ->
-             withCString logMsg $ \ logMsgPtr ->
-             withPoolPtr pool   $ \ poolPtr   ->
+             withReposPtr repos  $ \ reposPtr  ->
+             withCString  author $ \ authorPtr ->
+             withCString' logMsg $ \ logMsgPtr ->
+             withPoolPtr  pool   $ \ poolPtr   ->
              (svnErr $
               _fs_begin_txn_for_commit
               txnPtrPtr
@@ -141,9 +161,13 @@ beginTxn repos revNum author logMsg
              >>= (wrapTxn $
                   -- txn は pool にも repos にも依存する。
                   touchPool pool >> touchRepos repos)
+    where
+      withCString' :: Maybe String -> (CString -> IO a) -> IO a
+      withCString' Nothing    f = f nullPtr
+      withCString' (Just str) f = withCString str f
              
 
-commitTxn :: Repository -> Transaction -> IO (Either FilePath Int)
+commitTxn :: Repository -> Transaction -> IO (Either FilePath RevNum)
 commitTxn repos txn
     = do pool <- newPool
          alloca $ \ conflictPathPtrPtr ->
@@ -167,13 +191,30 @@ commitTxn repos txn
                          else
                              throwSvnErr e
 
-
-doReposTxn :: Repository
-           -> Int
-           -> String
-           -> String
-           -> Txn ()
-           -> IO (Either FilePath Int)
+-- |@'doReposTxn'@ tries to do the transaction. If it succeeds
+-- 'doReposTxn' automatically commits it, but if it throws an
+-- exception 'doReposTxn' automatically cancels it and rethrow the
+-- exception.
+--
+-- Because conflicts tend to occur more frequently than other errors,
+-- they aren't reported as an exception.
+doReposTxn
+    :: Repository   -- ^ The repository.
+    -> RevNum       -- ^ An existing revision number which the
+                    --   transaction bases on.
+    -> String       -- ^ The author name to be recorded as a
+                    --   transaction property.
+    -> Maybe String -- ^ The log message to be recorded as a
+                    --   transaction property. This value may be
+                    --   'Prelude.Nothing' if the message is not yet
+                    --   available. The caller will need to attach one
+                    --   to the transaction at a later time.
+    -> Txn ()       -- ^ The transaction to be done.
+    -> IO (Either FilePath RevNum) -- ^ The result is whether
+                                   -- @'Prelude.Left' conflictPath@
+                                   -- (if it conflicted) or
+                                   -- @'Prelude.Right' newRevNum@ (if
+                                   -- it didn't).
 doReposTxn repos revNum author logMsg c
     = do txn <- beginTxn repos revNum author logMsg
          handle (cleanUp txn) (tryTxn txn)

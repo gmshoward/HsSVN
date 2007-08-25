@@ -101,6 +101,7 @@ data SvnErrCode
                         --   there.
     | AprENOENT         -- ^ APR ENOENT error: typically it means
                         --   something you tried to use wasn't there.
+    | DirNotEmpty       -- ^ The directory needs to be empty but it's not.
     | ReposLocked       -- ^ The repository was locked, perhaps for db
                         --   recovery.
     | FsAlreadyExists   -- ^ The item already existed in filesystem.
@@ -121,6 +122,7 @@ data SvnErrCode
 statusToErrCode :: APR_STATUS_T -> SvnErrCode
 statusToErrCode (#const APR_EEXIST                 ) = AprEEXIST
 statusToErrCode (#const APR_ENOENT                 ) = AprENOENT
+statusToErrCode (#const SVN_ERR_DIR_NOT_EMPTY      ) = DirNotEmpty
 statusToErrCode (#const SVN_ERR_REPOS_LOCKED       ) = ReposLocked
 statusToErrCode (#const SVN_ERR_FS_ALREADY_EXISTS  ) = FsAlreadyExists
 statusToErrCode (#const SVN_ERR_FS_CONFLICT        ) = FsConflict

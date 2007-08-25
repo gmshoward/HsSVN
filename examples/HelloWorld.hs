@@ -1,36 +1,32 @@
 import Subversion
+import Subversion.Repository
 import Subversion.FileSystem
 import Subversion.FileSystem.Revision
 import Subversion.FileSystem.Root
 import Subversion.FileSystem.Transaction
-import Subversion.Hash
-import Subversion.Repository
-import Subversion.Stream
-import Prelude hiding (lookup)
 
 main = withSubversion $
-       do repos <- openRepository "repos"
-          fs    <- getRepositoryFS repos
-          rev   <- getYoungestRev fs
-
-{-
-          doReposTxn repos rev "PHO" "txn test"
-                         $ do copyEntry rev "hello" "olleh"
--}
-
-          hello <- withRevision fs 2 $
-                   getNodeHistory True "/hello"
-          print hello
-
-{-
-          root  <- getRevisionRoot fs rev
-          getDirEntries root "/" >>= print
--}
+       do putStrLn "Creating a repository \"repos\"..."
+          repos  <- createRepository "repos" [] []
+          fs     <- getRepositoryFS repos
 
 
+          rev    <- getYoungestRev fs
+          putStrLn ("The youngest revision of the repository is " ++ show rev)
 
---          makeFile root "/tmp_"
---          abortTxn txn
---          commitTxn repos txn >>= print
 
-          return ()
+          putStrLn "Storing a file \"/hello\" in it..."
+          Right newRev <- doReposTxn repos rev "HelloWorld" (Just "New file: /hello")
+                          $ do makeFile "/hello"
+                               applyText "/hello" Nothing "Hello, world!"
+          putStrLn ("Succeeded. The revision is " ++ show newRev ++ ".")
+
+
+          putStrLn ("Getting the content of \"/hello\" at revision " ++ show newRev ++ "...")
+          content <- withRevision fs newRev
+                     $ getFileContents "/hello"
+          putStrLn ("-------------\n" ++ content ++ "\n-------------")
+          
+          
+          putStrLn "Deleting the repository..."
+          deleteRepository "repos"

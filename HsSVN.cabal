@@ -10,6 +10,8 @@ Version:
     0.1
 License: 
     PublicDomain
+License-File:
+    COPYING
 Author: 
     PHO <phonohawk at ps dot sakura dot ne dot jp>
 Maintainer: 
@@ -17,7 +19,7 @@ Maintainer:
 Stability:
     experimental
 Homepage: 
-    http://ccm.sherry.jp/HsSubversion/
+    http://ccm.sherry.jp/HsSVN/
 Category: 
     System
 Tested-With: 

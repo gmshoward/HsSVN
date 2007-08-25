@@ -1,9 +1,3 @@
-{- -*- haskell -*- -}
-
--- #hide
-
--- Internal use only.
-
 module Subversion.Pool
     ( Pool
     , APR_POOL_T

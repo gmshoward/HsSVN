@@ -36,12 +36,13 @@ Exposed-Modules:
     Subversion.FileSystem.Root
     Subversion.FileSystem.Transaction
     Subversion.Error
+    Subversion.Repository
+    Subversion.Types
+Other-Modules:
     Subversion.Hash
     Subversion.Pool
-    Subversion.Repository
     Subversion.Stream
     Subversion.String
-    Subversion.Types
 Extensions:
     ForeignFunctionInterface, EmptyDataDecls
 GHC-Options: 

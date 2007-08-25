@@ -1,9 +1,3 @@
-{- -*- haskell -*- -}
-
--- #hide
-
--- Internal use only.
-
 module Subversion.Stream
     ( Stream
     , SVN_STREAM_T

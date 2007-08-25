@@ -1,7 +1,3 @@
-{- -*- haskell -*- -}
-
--- #hide
-
 #include "HsSVN.h"
 
 module Subversion.Hash

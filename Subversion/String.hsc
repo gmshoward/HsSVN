@@ -1,9 +1,3 @@
-{- -*- Haskell -*- -}
-
--- #hide
-
--- Internal use only.
-
 #include "HsSVN.h"
 
 module Subversion.String

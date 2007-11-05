@@ -57,6 +57,7 @@ marshalBool False = (#const FALSE)
 unmarshalBool :: SVN_BOOLEAN_T -> Bool
 unmarshalBool (#const TRUE ) = True
 unmarshalBool (#const FALSE) = False
+unmarshalBool _              = undefined
 
 -- |@'NodeKind'@ represents a type of node in Subversion filesystem.
 data NodeKind
@@ -69,6 +70,7 @@ unmarshalNodeKind :: SVN_NODE_KIND_T -> NodeKind
 unmarshalNodeKind (#const svn_node_none) = NoNode
 unmarshalNodeKind (#const svn_node_file) = FileNode
 unmarshalNodeKind (#const svn_node_dir ) = DirNode
+unmarshalNodeKind _                      = undefined
 
 -- |@'Version'@ is version.
 data Version = Version {

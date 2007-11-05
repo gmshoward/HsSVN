@@ -41,10 +41,11 @@ unmarshalChangeKind (#const svn_fs_path_change_modify ) = ModifiedPath
 unmarshalChangeKind (#const svn_fs_path_change_add    ) = AddedPath
 unmarshalChangeKind (#const svn_fs_path_change_delete ) = DeletedPath
 unmarshalChangeKind (#const svn_fs_path_change_replace) = ReplacedPath
+unmarshalChangeKind _                                   = undefined
 
 
 instance HashValue PathChange where
-    marshal pc
+    marshal _
         = fail "marshalling PathChange is not supported"
 
     unmarshal finalizer pcPtr

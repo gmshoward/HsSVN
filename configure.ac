@@ -36,6 +36,14 @@ AC_CHECK_PROGS(
         [AC_MSG_ERROR([apr-config is required. Hint: APR_CONFIG])])
 SVN_CFLAGS=`$APR_CONFIG --includes --cppflags`" $SVN_CFLAGS"
 SVN_LIBS=`$APR_CONFIG --link-ld --libs`" $SVN_LIBS"
+
+AC_ARG_VAR([APU_CONFIG], [apu-config to use])
+AC_CHECK_PROGS(
+        [APU_CONFIG],
+        [apu-config],
+        [AC_MSG_ERROR([apu-config is required. Hint: APU_CONFIG])])
+SVN_CFLAGS=`$APU_CONFIG --includes`" $SVN_CFLAGS"
+SVN_LIBS=`$APU_CONFIG --link-ld --libs`" $SVN_LIBS"
 #
 # Done the ugly checks
 #

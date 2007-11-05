@@ -24,9 +24,12 @@ module Subversion.Stream
     where
 
 import           Control.Monad
-import           Data.ByteString.Base
-import qualified Data.ByteString.Char8      as B8
-import qualified Data.ByteString.Lazy.Char8 as L8
+import qualified Data.ByteString            as Strict        (ByteString)
+import qualified Data.ByteString.Char8      as B8     hiding (ByteString)
+import qualified Data.ByteString.Lazy       as Lazy          (ByteString)
+import qualified Data.ByteString.Lazy.Char8 as L8     hiding (ByteString)
+import           Data.ByteString.Internal             hiding (ByteString)
+import           Data.ByteString.Unsafe
 import           Foreign.C.Types
 import           Foreign.ForeignPtr
 import           Foreign.Ptr
@@ -96,7 +99,7 @@ sStrictRead io
     = liftM L8.unpack $ sStrictReadLBS io
 
 
-sReadBS :: Stream -> Int -> IO ByteString
+sReadBS :: Stream -> Int -> IO Strict.ByteString
 sReadBS io maxLen
     = withStreamPtr io     $ \ ioPtr     ->
       createAndTrim maxLen $ \ bufPtr    ->
@@ -106,8 +109,8 @@ sReadBS io maxLen
          liftM fromIntegral $ peek bufLenPtr
 
 
-sReadLBS :: Stream -> IO LazyByteString
-sReadLBS io = lazyRead >>= return . LPS
+sReadLBS :: Stream -> IO Lazy.ByteString
+sReadLBS io = lazyRead >>= return . L8.fromChunks
     where
       chunkSize = 32 * 1024
 
@@ -122,8 +125,8 @@ sReadLBS io = lazyRead >>= return . LPS
                        return (bs:bss)
 
 
-sStrictReadLBS :: Stream -> IO LazyByteString
-sStrictReadLBS io = strictRead >>= return . LPS
+sStrictReadLBS :: Stream -> IO Lazy.ByteString
+sStrictReadLBS io = strictRead >>= return . L8.fromChunks
     where
       chunkSize = 32 * 1024
 
@@ -144,7 +147,7 @@ sWrite io str
     = sWriteLBS io (L8.pack str)
 
 
-sWriteBS :: Stream -> ByteString -> IO ()
+sWriteBS :: Stream -> Strict.ByteString -> IO ()
 sWriteBS io str
     = withStreamPtr io $ \ ioPtr ->
       unsafeUseAsCStringLen str $ \ (strPtr, strLen) ->
@@ -153,9 +156,9 @@ sWriteBS io str
              svnErr $ _write ioPtr strPtr strLenPtr
 
 
-sWriteLBS :: Stream -> LazyByteString -> IO ()
-sWriteLBS io (LPS chunks)
-    = mapM_ (sWriteBS io) chunks
+sWriteLBS :: Stream -> Lazy.ByteString -> IO ()
+sWriteLBS io chunks
+    = mapM_ (sWriteBS io) (L8.toChunks chunks)
 
 
 sClose :: Stream -> IO ()

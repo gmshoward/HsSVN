@@ -27,7 +27,7 @@ data DirEntry
 
 
 instance HashValue DirEntry where
-    marshal ent
+    marshal _
         = fail "marshalling DirEntry is not supported"
 
     unmarshal finalizer entPtr

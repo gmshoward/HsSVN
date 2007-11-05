@@ -42,9 +42,9 @@ module Subversion.FileSystem.Transaction
 
 import           Control.Monad.Reader
 import           Control.Monad
-import           Data.ByteString.Base
-import qualified Data.ByteString.Char8 as B8
-import qualified Data.ByteString.Lazy.Char8 as L8
+import qualified Data.ByteString.Char8      as B8
+import qualified Data.ByteString.Lazy       as Lazy        (ByteString)
+import qualified Data.ByteString.Lazy.Char8 as L8   hiding (ByteString)
 import           Foreign.C.String
 import           Foreign.ForeignPtr
 import           Foreign.Ptr
@@ -261,8 +261,8 @@ applyText path resultMD5 contents
     = applyTextLBS path resultMD5 (L8.pack contents)
 
 -- |@'applyTextLBS'@ does the same thing as 'applyText' but takes
--- 'Data.ByteString.Base.LazyByteString' instead.
-applyTextLBS :: FilePath -> Maybe String -> LazyByteString -> Txn ()
+-- 'Data.ByteString.Lazy.ByteString' instead.
+applyTextLBS :: FilePath -> Maybe String -> Lazy.ByteString -> Txn ()
 applyTextLBS path resultMD5 contents
     = do root <- getRoot
          pool <- unsafeIOToFS newPool

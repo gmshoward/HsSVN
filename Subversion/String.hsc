@@ -9,8 +9,9 @@ module Subversion.String
     )
     where
 
-import           Data.ByteString.Base
-import qualified Data.ByteString.Char8 as B8
+import qualified Data.ByteString as Strict (ByteString)
+import qualified Data.ByteString.Char8 as B8 hiding (ByteString)
+import           Data.ByteString.Unsafe
 import           Foreign.C.Types
 import           Foreign.Marshal.Alloc
 import           Foreign.Ptr
@@ -33,7 +34,7 @@ peekLen :: Ptr SVN_STRING_T -> IO APR_SIZE_T
 peekLen = (#peek svn_string_t, len)
 
 
-withSvnString :: ByteString -> (Ptr SVN_STRING_T -> IO a) -> IO a
+withSvnString :: Strict.ByteString -> (Ptr SVN_STRING_T -> IO a) -> IO a
 withSvnString bs f
     = unsafeUseAsCStringLen bs         $ \ (bsBuf, bsLen) ->
       allocaBytes (#size svn_string_t) $ \ obj            ->
@@ -42,22 +43,22 @@ withSvnString bs f
          f obj
 
 
-withSvnString' :: Maybe ByteString -> (Ptr SVN_STRING_T -> IO a) -> IO a
+withSvnString' :: Maybe Strict.ByteString -> (Ptr SVN_STRING_T -> IO a) -> IO a
 withSvnString' Nothing   f = f nullPtr
 withSvnString' (Just bs) f = withSvnString bs f
 
 
-peekSvnString :: Ptr SVN_STRING_T -> IO ByteString
+peekSvnString :: Ptr SVN_STRING_T -> IO Strict.ByteString
 peekSvnString obj
     | obj == nullPtr
         = fail "peekSvnString: got a null pointer"
     | otherwise
         = do buf <- peekData obj
              len <- peekLen  obj
-             B8.copyCStringLen (buf, fromIntegral len)
+             B8.packCStringLen (buf, fromIntegral len)
 
 
-peekSvnString' :: Ptr SVN_STRING_T -> IO (Maybe ByteString)
+peekSvnString' :: Ptr SVN_STRING_T -> IO (Maybe Strict.ByteString)
 peekSvnString' obj
     | obj == nullPtr
         = return Nothing

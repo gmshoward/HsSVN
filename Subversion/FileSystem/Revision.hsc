@@ -210,5 +210,5 @@ getNodeHistory crossCopies path
             withPoolPtr pool $ \ poolPtr    ->
             do svnErr $ _history_location pathPtrPtr revNumPtr histPtr poolPtr
                revNum <- return . fromIntegral =<< peek revNumPtr
-               path   <- peekCString           =<< peek pathPtrPtr
-               return (revNum, path)
+               path'  <- peekCString           =<< peek pathPtrPtr
+               return (revNum, path')

@@ -44,9 +44,9 @@ module Subversion.FileSystem.Root
     where
 
 import           Control.Monad
-import           Data.ByteString.Base
-import qualified Data.ByteString.Char8 as B8
-import qualified Data.ByteString.Lazy.Char8 as L8
+import qualified Data.ByteString.Char8      as B8
+import qualified Data.ByteString.Lazy       as Lazy        (ByteString)
+import qualified Data.ByteString.Lazy.Char8 as L8   hiding (ByteString)
 import           Data.Word
 import           Foreign.C.String
 import           Foreign.C.Types
@@ -205,8 +205,8 @@ getFileContents path
 
 
 -- |@'getFileContentsLBS'@ does the same thing as 'getFileContents'
--- but returns 'Data.ByteString.Base.LazyByteString' instead.
-getFileContentsLBS :: MonadFS m => FilePath -> m LazyByteString
+-- but returns 'Data.ByteString.Lazy.ByteString' instead.
+getFileContentsLBS :: MonadFS m => FilePath -> m Lazy.ByteString
 getFileContentsLBS path
     = do root  <- getRoot
          isTxn <- isTransaction

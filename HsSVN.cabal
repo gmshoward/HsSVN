@@ -12,7 +12,7 @@ Maintainer:    PHO <phonohawk at ps dot sakura dot ne dot jp>
 Stability:     experimental
 Homepage:      http://ccm.sherry.jp/HsSVN/
 Category:      System
-Tested-With:   GHC == 6.6.1
+Tested-With:   GHC == 6.8.1
 Cabal-Version: >= 1.2
 
 Extra-Source-Files:

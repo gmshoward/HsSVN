@@ -10,6 +10,9 @@ module Subversion.FileSystem.Revision
       -- * Running the monad
     , withRevision
 
+      -- * Getting revision info
+    , getRevisionNumber
+
       -- * Accessing revision property
     , getRevisionProp
     , getRevisionPropList
@@ -68,6 +71,9 @@ data SVN_FS_HISTORY_T
 foreign import ccall unsafe "svn_fs_revision_root"
         _revision_root :: Ptr (Ptr SVN_FS_ROOT_T) -> Ptr SVN_FS_T -> SVN_REVNUM_T -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
 
+foreign import ccall unsafe "svn_fs_revision_root_revision"
+        _revision_root_revision :: Ptr SVN_FS_ROOT_T -> IO SVN_REVNUM_T
+
 foreign import ccall unsafe "svn_fs_revision_prop"
         _revision_prop :: Ptr (Ptr SVN_STRING_T) -> Ptr SVN_FS_T -> SVN_REVNUM_T -> CString -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
 
@@ -103,6 +109,14 @@ withRevision :: FileSystem -> RevNum -> Rev a -> IO a
 withRevision fs revNum c
     = getRevisionRoot fs revNum
       >>= runReaderT (unRev c)
+
+-- |Return the revision number.
+getRevisionNumber :: Rev RevNum
+getRevisionNumber
+    = do root <- getRoot
+         unsafeIOToFS $ withFSRootPtr root $ \ rootPtr ->
+             _revision_root_revision rootPtr 
+                  >>= return . fromIntegral
 
 -- |@'getRevisionProp' fs revNum propName@ returns the value of the
 -- property named @propName@ on revision @revNum@ in the filesystem

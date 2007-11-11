@@ -1,3 +1,8 @@
+Changes from 0.1 to [the next release]
+--------------------------------------
+* Added new function: Subversion.FileSystem.Revision.getRevisionNumber
+
+
 Changes from 0.1 to 0.2
 -----------------------
 * HsSVN now requires GHC 6.8.1

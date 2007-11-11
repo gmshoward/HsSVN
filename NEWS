@@ -1,6 +1,12 @@
 Changes from 0.1 to [the next release]
 --------------------------------------
-* Added new function: Subversion.FileSystem.Revision.getRevisionNumber
+* Subversion.FileSystem.Revision:
+  - Added new function: getRevisionNumber
+  - Renamed function: getRevisionProp ==> getRevisionProp'
+  - Renamed function: getRevisionPropList ==> getRevisionPropList'
+  - Added new function: getRevisionProp
+  - Added new function: getRevisionPropList
+  
 
 
 Changes from 0.1 to 0.2

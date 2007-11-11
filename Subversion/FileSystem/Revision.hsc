@@ -15,7 +15,9 @@ module Subversion.FileSystem.Revision
 
       -- * Accessing revision property
     , getRevisionProp
+    , getRevisionProp'
     , getRevisionPropList
+    , getRevisionPropList'
     , setRevisionProp
 
       -- * Getting node history
@@ -118,11 +120,19 @@ getRevisionNumber
              _revision_root_revision rootPtr 
                   >>= return . fromIntegral
 
--- |@'getRevisionProp' fs revNum propName@ returns the value of the
--- property named @propName@ on revision @revNum@ in the filesystem
--- @fs@.
-getRevisionProp :: FileSystem -> RevNum -> String -> IO (Maybe String)
-getRevisionProp fs revNum name
+-- |@'getRevisionProp' propName@ returns the value of the property
+-- named @propName@ of the revision.
+getRevisionProp :: String -> Rev (Maybe String)
+getRevisionProp name
+    = do root   <- getRoot
+         fs     <- unsafeIOToFS $ getRootFS root
+         revNum <- getRevisionNumber
+         unsafeIOToFS $ getRevisionProp' fs revNum name
+
+-- |@'getRevisionProp'' fs revNum propName@ returns the value of the
+-- property named @propName@ of revision @revNum@ of filesystem @fs@.
+getRevisionProp' :: FileSystem -> RevNum -> String -> IO (Maybe String)
+getRevisionProp' fs revNum name
     = do pool <- newPool
          alloca $ \ valPtrPtr ->
              withFSPtr   fs   $ \ fsPtr   ->
@@ -135,10 +145,17 @@ getRevisionProp fs revNum name
                 touchPool pool
                 return $ fmap B8.unpack prop
 
--- |@'getRevisionPropList' fs revNum@ returns the entire property list
--- of revision @revNum@ in filesystem @fs@.
-getRevisionPropList :: FileSystem -> RevNum -> IO [(String, String)]
-getRevisionPropList fs revNum
+-- |Return the entire property list of the revision.
+getRevisionPropList :: Rev [(String, String)]
+getRevisionPropList
+    = do root   <- getRoot
+         fs     <- unsafeIOToFS $ getRootFS root
+         revNum <- getRevisionNumber
+         unsafeIOToFS $ getRevisionPropList' fs revNum
+
+-- |Return the entire property list of a revision.
+getRevisionPropList' :: FileSystem -> RevNum -> IO [(String, String)]
+getRevisionPropList' fs revNum
     = do pool <- newPool
          alloca $ \ hashPtrPtr ->
              withFSPtr   fs   $ \ fsPtr   ->
@@ -150,10 +167,10 @@ getRevisionPropList fs revNum
                                  >>=
                                  return . ((,) n) . B8.unpack) hash
 
--- |@'setRevisionProp'@ changes, adds or deletes a property on a
--- revision. Note that revision properties are non-historied: you can
--- change them after the revision has been comitted. They are not
--- protected via transactions.
+-- |Change, add or delete a property on a revision. Note that revision
+-- properties are non-historied: you can change them after the
+-- revision has been comitted. They are not protected via
+-- transactions.
 setRevisionProp :: FileSystem   -- ^ The transaction
                 -> RevNum       -- ^ The revision
                 -> String       -- ^ The property name
@@ -172,11 +189,11 @@ setRevisionProp fs revNum name valStr
 -- in a filesystem. The most recent change comes first in the
 -- resulting list.
 --
--- The revisions returned for a path will be older than or the same
--- age as the revision of that path in the target revision of 'Rev'
+-- The resulting list of revisions will be older than or the same age
+-- as the revision of that node in the target revision of 'Rev'
 -- monad. That is, if the 'Rev' monad is running on revision @X@, and
--- the path was modified in some revisions younger than @X@, those
--- revisions younger than @X@ will not be included for the path.
+-- the node was modified in some revisions younger than @X@, those
+-- revisions younger than @X@ will not be included in the list.
 getNodeHistory
     :: Bool                     -- ^ If this is true, stepping
                                 --   backwards in history would cross
@@ -190,7 +207,7 @@ getNodeHistory
                                 --   time the node was located on
                                 --   @nodePath@.
 getNodeHistory crossCopies path
-    = do pool <- unsafeIOToFS $ newPool
+    = do pool <- unsafeIOToFS newPool
          root <- getRoot
          unsafeIOToFS $ alloca $ \ histPtrPtr ->
              withFSRootPtr root $ \ rootPtr ->

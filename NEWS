@@ -6,7 +6,6 @@ Changes from 0.1 to [the next release]
   - Renamed function: getRevisionPropList ==> getRevisionPropList'
   - Added new function: getRevisionProp
   - Added new function: getRevisionPropList
-  
 
 
 Changes from 0.1 to 0.2

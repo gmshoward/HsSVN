@@ -189,7 +189,7 @@ setRevisionProp fs revNum name valStr
 -- in a filesystem. The most recent change comes first in the
 -- resulting list.
 --
--- The resulting list of revisions will be older than or the same age
+-- Revisions in the resulting list will be older than or the same age
 -- as the revision of that node in the target revision of 'Rev'
 -- monad. That is, if the 'Rev' monad is running on revision @X@, and
 -- the node was modified in some revisions younger than @X@, those

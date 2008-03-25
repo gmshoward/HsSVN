@@ -26,7 +26,7 @@ Extra-Source-Files:
 
 Library
     Build-Depends:
-        base, bytestring, mtl
+        base, bytestring, mtl, stm
     Exposed-Modules:
         Subversion
         Subversion.Config
@@ -43,6 +43,7 @@ Library
         Subversion.Hash
         Subversion.Pool
         Subversion.Stream
+        Subversion.Stream.Pipe
         Subversion.String
     Extensions:
         EmptyDataDecls, ForeignFunctionInterface, TypeSynonymInstances

@@ -61,9 +61,9 @@ type CloseAction = IO ()
 
 data StreamActions
     = StreamActions {
-        saRead  :: ReadAction
-      , saWrite :: WriteAction
-      , saClose :: CloseAction
+        saRead  :: !ReadAction
+      , saWrite :: !WriteAction
+      , saClose :: !CloseAction
       }
 
 

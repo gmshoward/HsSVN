@@ -1,4 +1,4 @@
-Changes from 0.1 to [the next release]
+Changes from 0.2 to [the next release]
 --------------------------------------
 * Subversion.FileSystem.Revision:
   - Added new function: getRevisionNumber

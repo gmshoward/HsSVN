@@ -225,15 +225,13 @@ sStrictReadLBS io = strictRead >>= return . L8.fromChunks
     where
       chunkSize = 32 * 1024
 
-      strictRead = unsafeInterleaveIO loop
-
-      loop = do bs <- sReadBS io chunkSize
-                if B8.null bs then
-                    -- reached EOF
-                    return []
-                  else
-                    do bss <- strictRead
-                       return (bs:bss)
+      strictRead = do bs <- sReadBS io chunkSize
+                      if B8.null bs then
+                          -- reached EOF
+                          return []
+                        else
+                          do bss <- strictRead
+                             return (bs:bss)
 
 
 

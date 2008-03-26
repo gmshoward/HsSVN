@@ -3,6 +3,8 @@
 -- |An interface to repository, which is built on top of the
 -- filesystem.
 
+#include "HsSVN.h"
+
 module Subversion.Repository
     ( Repository
 
@@ -13,11 +15,15 @@ module Subversion.Repository
     , getRepositoryFS
 
     , doReposTxn
+
+    , dumpRepository
     )
     where
 
+import           Control.Concurrent
 import           Control.Exception
 import           Control.Monad
+import qualified Data.ByteString.Lazy as Lazy (ByteString)
 import           Data.Maybe
 import           Foreign.C.String
 import           Foreign.C.Types
@@ -25,19 +31,24 @@ import           Foreign.ForeignPtr
 import           Foreign.Ptr
 import           Foreign.Marshal.Alloc
 import           Foreign.Storable
-import           GHC.ForeignPtr   as GF
+import           GHC.ForeignPtr as GF
 import           Subversion.Config
 import           Subversion.FileSystem
 import           Subversion.FileSystem.Transaction
 import           Subversion.Hash
 import           Subversion.Error
 import           Subversion.Pool
+import           Subversion.Stream
+import           Subversion.Stream.Pipe
 import           Subversion.Types
 
 -- |@'Repository'@ is an opaque object representing a Subversion
 -- repository.
 newtype Repository = Repository (ForeignPtr SVN_REPOS_T)
 data SVN_REPOS_T
+
+
+type CancelFunc = Ptr () -> IO (Ptr SVN_ERROR_T)
 
 
 foreign import ccall unsafe "svn_repos_open"
@@ -57,6 +68,19 @@ foreign import ccall unsafe "svn_repos_fs_begin_txn_for_commit"
 
 foreign import ccall unsafe "svn_repos_fs_commit_txn"
         _fs_commit_txn :: Ptr CString -> Ptr SVN_REPOS_T -> Ptr SVN_REVNUM_T -> Ptr SVN_FS_TXN_T -> Ptr APR_POOL_T -> IO (Ptr SVN_ERROR_T)
+
+foreign import ccall safe "svn_repos_dump_fs2"
+        _dump_fs2 :: Ptr SVN_REPOS_T      -- repos
+                  -> Ptr SVN_STREAM_T     -- dumpstream
+                  -> Ptr SVN_STREAM_T     -- feedback_stream
+                  -> SVN_REVNUM_T         -- start_rev
+                  -> SVN_REVNUM_T         -- end_rev
+                  -> SVN_BOOLEAN_T        -- incremental
+                  -> SVN_BOOLEAN_T        -- use_deltas
+                  -> FunPtr CancelFunc    -- cancel_func
+                  -> Ptr ()               -- cancel_baton
+                  -> Ptr APR_POOL_T       -- pool
+                  -> IO (Ptr SVN_ERROR_T)
 
 
 wrapRepos :: IO () -> Ptr SVN_REPOS_T -> IO Repository
@@ -232,3 +256,32 @@ doReposTxn repos revNum author logMsg c
                -- Good. We've got no exceptions during the computation
                -- of Txn (). Now let us commit the transaction.
                commitTxn repos txn
+
+
+-- |FIXME: Describe this action!
+dumpRepository :: Repository
+               -> Maybe RevNum
+               -> Maybe RevNum
+               -> Bool
+               -> Bool
+               -> IO Lazy.ByteString
+dumpRepository repos startRev endRev incremental useDeltas
+    = do pool <- newPool
+         pipe <- newPipe
+         forkIO $ withReposPtr repos $ \ reposPtr ->
+             withStreamPtr pipe $ \ pipePtr ->
+             withPoolPtr pool $ \ poolPtr ->
+             svnErr $ _dump_fs2 reposPtr
+                                pipePtr
+                                nullPtr
+                                (fromMaybe invalidRevNum $ fmap fromIntegral startRev)
+                                (fromMaybe invalidRevNum $ fmap fromIntegral endRev)
+                                (marshalBool incremental)
+                                (marshalBool useDeltas)
+                                nullFunPtr
+                                nullPtr
+                                poolPtr
+         sReadLBS pipe
+    where
+      invalidRevNum :: SVN_REVNUM_T
+      invalidRevNum = #const SVN_INVALID_REVNUM

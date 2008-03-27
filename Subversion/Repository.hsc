@@ -258,12 +258,33 @@ doReposTxn repos revNum author logMsg c
                commitTxn repos txn
 
 
--- |FIXME: Describe this action!
-dumpRepository :: Repository
-               -> Maybe RevNum
-               -> Maybe RevNum
-               -> Bool
-               -> Bool
+-- |Lazily dump the contents of the filesystem within already-open
+-- repository.
+dumpRepository :: Repository   -- ^ The repository.
+               -> Maybe RevNum -- ^ @'Prelude.Nothing'@ to start
+                               -- dumping at revision 0, or
+                               -- @'Prelude.Just' x@ to begin at
+                               -- revision @x@.
+               -> Maybe RevNum -- ^ @'Prelude.Nothing'@ to dump
+                               -- through the HEAD revision, or
+                               -- @'Prelude.Just' x@ to dump up
+                               -- through revision @x@.
+               -> Bool         -- ^ If this is @'Prelude.True'@, the
+                               -- first revision dumped will be a diff
+                               -- against the previous revision
+                               -- (usually it looks like a full dump
+                               -- of the tree).
+               -> Bool         -- ^ If this is @'Prelude.True'@,
+                               -- output only node properties which
+                               -- have changed relative to the
+                               -- previous contents, and output text
+                               -- contents as svndiff data against the
+                               -- previous contents. Regardless of how
+                               -- this flag is set, the first revision
+                               -- of a non-incremental dump will be
+                               -- done with full plain text. A dump
+                               -- with this flag set cannot be loaded
+                               -- by Subversion 1.0.x.
                -> IO Lazy.ByteString
 dumpRepository repos startRev endRev incremental useDeltas
     = do pool <- newPool

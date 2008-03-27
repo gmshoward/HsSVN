@@ -38,24 +38,33 @@ newPipe = do req <- newTVarIO 0
 
 mkReadAction :: Pipe -> ReadAction
 mkReadAction pipe reqLen
-    = atomically $
-      do str <- readTVar (pWrittenStr pipe)
-         if Lazy.null str then
-             -- 書込まれた文字列が無いので、要求されたバイト數をパイプ
-             -- に書いて retry する。但しパイプが閉ぢられてゐたら空文字
-             -- 列を返して EOF を示す。
-             do isClosed <- readTVar (pIsClosed pipe)
-                if isClosed then
-                    return Strict.empty
-                  else
-                    do oldReq <- readTVar (pReadRequest pipe)
-                       writeTVar (pReadRequest pipe) (oldReq + reqLen)
-                       retry
-           else
-             -- reqLen バイトを上限としてバッファの頭を切り取る。
-             do let (readStr, remaining) = Lazy.splitAt (fromIntegral reqLen) str
-                writeTVar (pWrittenStr pipe) remaining
-                return (Strict.concat (Lazy.toChunks readStr))
+    = do nextAction <- tryToRead True
+         nextAction
+    where
+      tryToRead :: Bool -> IO (IO Strict.ByteString)
+      tryToRead writeRequestIfNeeded
+          = atomically $
+            do str <- readTVar (pWrittenStr pipe)
+               if Lazy.null str then
+                   -- 書込まれた文字列が無いので、要求されたバイト數を
+                   -- パイプに書いて書込みを待つ。但しパイプが閉ぢられ
+                   -- てゐたら空文字列を返して EOF を示す。
+                   do isClosed <- readTVar (pIsClosed pipe)
+                      if isClosed then
+                          return (return Strict.empty)
+                        else
+                          -- 要求バイト數を書き込むのは一度だけ。
+                          if writeRequestIfNeeded then
+                              do writeTVar (pReadRequest pipe) reqLen
+                                 return $ do nextAction <- tryToRead False
+                                             nextAction
+                          else
+                              retry
+                 else
+                   -- reqLen バイトを上限としてバッファの頭を切り取る。
+                   do let (readStr, remaining) = Lazy.splitAt (fromIntegral reqLen) str
+                      writeTVar (pWrittenStr pipe) remaining
+                      return (return (Strict.concat (Lazy.toChunks readStr)))
 
 
 mkWriteAction :: Pipe -> WriteAction

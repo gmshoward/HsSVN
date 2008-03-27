@@ -268,19 +268,20 @@ dumpRepository :: Repository
 dumpRepository repos startRev endRev incremental useDeltas
     = do pool <- newPool
          pipe <- newPipe
-         forkIO $ withReposPtr repos $ \ reposPtr ->
-             withStreamPtr pipe $ \ pipePtr ->
-             withPoolPtr pool $ \ poolPtr ->
-             svnErr $ _dump_fs2 reposPtr
-                                pipePtr
-                                nullPtr
-                                (fromMaybe invalidRevNum $ fmap fromIntegral startRev)
-                                (fromMaybe invalidRevNum $ fmap fromIntegral endRev)
-                                (marshalBool incremental)
-                                (marshalBool useDeltas)
-                                nullFunPtr
-                                nullPtr
-                                poolPtr
+         forkIO $ do withReposPtr repos $ \ reposPtr ->
+                         withStreamPtr pipe $ \ pipePtr ->
+                         withPoolPtr pool $ \ poolPtr ->
+                         svnErr $ _dump_fs2 reposPtr
+                                            pipePtr
+                                            nullPtr
+                                            (fromMaybe invalidRevNum $ fmap fromIntegral startRev)
+                                            (fromMaybe invalidRevNum $ fmap fromIntegral endRev)
+                                            (marshalBool incremental)
+                                            (marshalBool useDeltas)
+                                            nullFunPtr
+                                            nullPtr
+                                            poolPtr
+                     sClose pipe
          sReadLBS pipe
     where
       invalidRevNum :: SVN_REVNUM_T

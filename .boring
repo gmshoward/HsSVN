@@ -74,4 +74,5 @@
 ^dist($|/)
 ^examples/repos($|/)
 ^examples/HelloWorld$
+^examples/repository\.dump$
 ^examples/working($|/)

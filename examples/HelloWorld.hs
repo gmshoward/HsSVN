@@ -1,3 +1,4 @@
+import qualified Data.ByteString.Lazy as Lazy
 import Subversion
 import Subversion.Repository
 import Subversion.FileSystem
@@ -26,7 +27,11 @@ main = withSubversion $
           content <- withRevision fs newRev
                      $ getFileContents "/hello"
           putStrLn ("-------------\n" ++ content ++ "\n-------------")
+
+
+          putStrLn "Writing the whole content of repository to `repository.dump'..."
+          dumpRepository repos Nothing Nothing True True >>= Lazy.writeFile "repository.dump"
           
-          
+
           putStrLn "Deleting the repository..."
           deleteRepository "repos"

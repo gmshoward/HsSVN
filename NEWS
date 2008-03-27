@@ -1,5 +1,8 @@
-Changes from 0.2 to [the next release]
+Changes from 0.2 to 0.3
 --------------------------------------
+* Subversion.Repository:
+  - Added new function: dumpRepository
+
 * Subversion.FileSystem.Revision:
   - Added new function: getRevisionNumber
   - Renamed function: getRevisionProp ==> getRevisionProp'

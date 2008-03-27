@@ -14,6 +14,7 @@ Homepage:      http://ccm.sherry.jp/HsSVN/
 Category:      System
 Tested-With:   GHC == 6.8.1
 Cabal-Version: >= 1.2
+Build-Type: Configure
 
 Extra-Source-Files:
     HsSVN.buildinfo.in
@@ -46,9 +47,10 @@ Library
         Subversion.Stream.Pipe
         Subversion.String
     Extensions:
-        EmptyDataDecls, ForeignFunctionInterface, TypeSynonymInstances
+        EmptyDataDecls, DeriveDataTypeable, ForeignFunctionInterface,
+        TypeSynonymInstances
     GHC-Options: 
-        -Wall -XDeriveDataTypeable
+        -Wall
     C-Sources:
         cbits/HsSVN.c
     Include-Dirs:

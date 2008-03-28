@@ -11,20 +11,17 @@ import           Subversion.Stream
 
 data Pipe
     = Pipe {
-        pReadRequest :: TVar Int             -- 讀込み側が要求し、未だ書込まれてゐないバイト數
-      , pWrittenStr  :: TVar Lazy.ByteString -- 要求に應へて書込まれ、未だ讀込まれてゐない文字列
+        pWrittenStr  :: TVar Lazy.ByteString -- 書き込まれたが、未だ讀込まれてゐない文字列
       , pIsClosed    :: TVar Bool            -- パイプが閉ぢられた
       }
 
 
 newPipe :: IO Stream
-newPipe = do req <- newTVarIO 0
-             str <- newTVarIO Lazy.empty
+newPipe = do str <- newTVarIO Lazy.empty
              isC <- newTVarIO False
              
              let pipe    = Pipe {
-                             pReadRequest = req
-                           , pWrittenStr  = str
+                             pWrittenStr  = str
                            , pIsClosed    = isC
                            }
                  actions = StreamActions {
@@ -37,29 +34,27 @@ newPipe = do req <- newTVarIO 0
 
 
 mkReadAction :: Pipe -> ReadAction
-mkReadAction pipe reqLen
-    = do nextAction <- tryToRead True
-         nextAction
+mkReadAction pipe reqLen = loop
     where
-      tryToRead :: Bool -> IO (IO Strict.ByteString)
-      tryToRead writeRequestIfNeeded
+      loop :: IO Strict.ByteString
+      loop = do nextAction <- tryToRead
+                nextAction
+
+      tryToRead :: IO (IO Strict.ByteString)
+      tryToRead
           = atomically $
             do str <- readTVar (pWrittenStr pipe)
-               if Lazy.null str then
-                   -- 書込まれた文字列が無いので、要求されたバイト數を
-                   -- パイプに書いて書込みを待つ。但しパイプが閉ぢられ
-                   -- てゐたら空文字列を返して EOF を示す。
+               if Lazy.length str < fromIntegral reqLen then
+                   -- 書込まれた文字列が足りないので、要求されたバイト
+                   -- 數をパイプに書いて書込みを待つ。但しパイプが閉ぢ
+                   -- られてゐたら reqLen に滿たない長さの文字列を返し
+                   -- て EOF を示す。
                    do isClosed <- readTVar (pIsClosed pipe)
                       if isClosed then
-                          return (return Strict.empty)
+                          do writeTVar (pWrittenStr pipe) Lazy.empty
+                             return (return (Strict.concat (Lazy.toChunks str)))
                         else
-                          -- 要求バイト數を書き込むのは一度だけ。
-                          if writeRequestIfNeeded then
-                              do writeTVar (pReadRequest pipe) reqLen
-                                 return $ do nextAction <- tryToRead False
-                                             nextAction
-                          else
-                              retry
+                          retry
                  else
                    -- reqLen バイトを上限としてバッファの頭を切り取る。
                    do let (readStr, remaining) = Lazy.splitAt (fromIntegral reqLen) str
@@ -75,21 +70,11 @@ mkWriteAction pipe str
          if isClosed then
              -- パイプが閉ぢられてゐたら書込まれた文字列を捨てる
              -- FIXME: 本當にそれで良いのか？
-             return inputLen
+             return ()
            else
-             do requestedBytes <- readTVar (pReadRequest pipe)
-                writtenStr     <- readTVar (pWrittenStr pipe)
-                let maxBytesToWrite = requestedBytes - (fromIntegral $ Lazy.length writtenStr)
-                if maxBytesToWrite > 0 then
-                    -- 要求されてゐるので書込む
-                    do let strToWrite   = Strict.take maxBytesToWrite str
-                           bytesToWrite = Strict.length strToWrite
-                       writeTVar (pReadRequest pipe) (requestedBytes - bytesToWrite)
-                       writeTVar (pWrittenStr pipe) (writtenStr `Lazy.append` (Lazy.fromChunks [strToWrite]))
-                       return bytesToWrite
-                  else
-                    -- 要求されてゐないので retry
-                    retry
+             do writtenStr <- readTVar (pWrittenStr pipe)
+                writeTVar (pWrittenStr pipe) (writtenStr `Lazy.append` (Lazy.fromChunks [str]))
+         return inputLen
 
 
 mkCloseAction :: Pipe -> CloseAction

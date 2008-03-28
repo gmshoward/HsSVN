@@ -1,5 +1,11 @@
+Changes from 0.3 to 0.3.1
+-------------------------
+* Subversion.Repository:
+  - Fixed dumpRepository bug which causes infinite-loop.
+
+
 Changes from 0.2 to 0.3
---------------------------------------
+-----------------------
 * Subversion.Repository:
   - Added new function: dumpRepository
 

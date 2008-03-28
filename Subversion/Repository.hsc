@@ -259,7 +259,7 @@ doReposTxn repos revNum author logMsg c
 
 
 -- |Lazily dump the contents of the filesystem within already-open
--- repository.
+-- repository. Note that this action requires -threaded RTS.
 dumpRepository :: Repository   -- ^ The repository.
                -> Maybe RevNum -- ^ @'Prelude.Nothing'@ to start
                                -- dumping at revision 0, or

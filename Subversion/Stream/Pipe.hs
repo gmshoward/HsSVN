@@ -1,44 +1,37 @@
 module Subversion.Stream.Pipe
-    ( newPipe 
+    ( newPipe
     )
     where
 
-{-
-  !!!!!!!!!! 警告 !!!!!!!!!!
-
-  實裝を見れば判ると思ふが、このパイプは讀み込みが追ひ付かなくても書き
-  込み側がブロックされない。一つの native thread（複數の GHC thread）で
-  svn_repos_fs_commit_txn と svn_stream_read が STM を使って互ひにブロッ
-  クし合ふと何故か CPU を 100% 喰ひ潰してハングアップする爲である。
-  foreign function wrapper からの STM トランザクションに問題があるのか
-  も知れないが、何れにせよ原因は不明。発現した GHC のバージョンは
-  6.8.2。
-
-  現在の實裝ではパイプに書き込まれた内容は讀み取られるまで一方的にメモ
-  リに蓄積されるので注意を要する。使ひ方によっては DoS 攻撃の的にされ得
-  る。
--}
-
+import           Control.Concurrent
 import           Control.Concurrent.STM
+import           Control.Monad
 import qualified Data.ByteString      as Strict
 import qualified Data.ByteString.Lazy as Lazy
+import           Data.Int
 import           Subversion.Stream
 
 
 data Pipe
     = Pipe {
-        pWrittenStr  :: TVar Lazy.ByteString -- 書き込まれたが、未だ讀込まれてゐない文字列
-      , pIsClosed    :: TVar Bool            -- パイプが閉ぢられた
+        pRequestLen :: TVar Int             -- 要求された殘りバイト數
+      , pWrittenStr :: TVar Lazy.ByteString -- 書き込まれたが、未だ讀込まれてゐない文字列
+      , pIsClosed   :: TVar Bool            -- パイプが閉ぢられた
       }
 
 
 newPipe :: IO Stream
-newPipe = do str <- newTVarIO Lazy.empty
+newPipe = do unless rtsSupportsBoundThreads
+                 $ fail "Subversion.Stream.Pipe.newPipe requires threaded RTS!"
+
+             req <- newTVarIO 0
+             str <- newTVarIO Lazy.empty
              isC <- newTVarIO False
              
              let pipe    = Pipe {
-                             pWrittenStr  = str
-                           , pIsClosed    = isC
+                             pRequestLen = req
+                           , pWrittenStr = str
+                           , pIsClosed   = isC
                            }
                  actions = StreamActions {
                              saRead  = mkReadAction  pipe
@@ -70,7 +63,12 @@ mkReadAction pipe reqLen = loop
                           do writeTVar (pWrittenStr pipe) Lazy.empty
                              return (return (Strict.concat (Lazy.toChunks str)))
                         else
-                          retry
+                          do oldReqLen <- readTVar (pRequestLen pipe)
+                             if oldReqLen < reqLen then
+                                 do writeTVar (pRequestLen pipe) reqLen
+                                    return loop
+                               else
+                                 retry
                  else
                    -- reqLen バイトを上限としてバッファの頭を切り取る。
                    do let (readStr, remaining) = Lazy.splitAt (fromIntegral reqLen) str
@@ -79,18 +77,33 @@ mkReadAction pipe reqLen = loop
 
 
 mkWriteAction :: Pipe -> WriteAction
-mkWriteAction pipe str
-    = atomically $
-      do let inputLen = Strict.length str
-         isClosed <- readTVar (pIsClosed pipe)
-         if isClosed then
-             -- パイプが閉ぢられてゐたら書込まれた文字列を捨てる
-             -- FIXME: 本當にそれで良いのか？
-             return ()
-           else
-             do writtenStr <- readTVar (pWrittenStr pipe)
-                writeTVar (pWrittenStr pipe) (writtenStr `Lazy.append` (Lazy.fromChunks [str]))
-         return inputLen
+mkWriteAction pipe input = loop input >> return (Strict.length input)
+    where
+      loop :: Strict.ByteString -> IO ()
+      loop str = do nextAction <- tryToWrite str
+                    nextAction
+
+      tryToWrite :: Strict.ByteString -> IO (IO ())
+      tryToWrite str
+          = atomically $
+            do isClosed <- readTVar (pIsClosed pipe)
+               if isClosed then
+                   -- パイプが閉ぢられてゐたら書込まれた文字列を捨てる
+                   -- FIXME: 本當にそれで良いのか？
+                   return (return ())
+                 else
+                   do reqLen <- readTVar (pRequestLen pipe)
+                      let (strToWrite, remaining) = Strict.splitAt reqLen str
+                      if Strict.null strToWrite then
+                          if Strict.null remaining then
+                              return (return ())
+                          else
+                              retry
+                        else
+                          do writtenStr <- readTVar (pWrittenStr pipe)
+                             writeTVar (pWrittenStr pipe) (writtenStr `Lazy.append` (Lazy.fromChunks [strToWrite]))
+                             writeTVar (pRequestLen pipe) (reqLen - Strict.length strToWrite)
+                             return (loop remaining)
 
 
 mkCloseAction :: Pipe -> CloseAction

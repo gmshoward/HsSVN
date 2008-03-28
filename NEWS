@@ -1,3 +1,9 @@
+Changes from 0.3.1 to 0.3.2
+---------------------------
+* Subversion.Repository:
+  - Fixed dumpRepository bug again... Hopefully it works now.
+
+
 Changes from 0.3 to 0.3.1
 -------------------------
 * Subversion.Repository:

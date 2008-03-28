@@ -1,7 +1,7 @@
 GHCFLAGS = -fglasgow-exts
 
 build:
-	ghc $(GHCFLAGS) --make HelloWorld
+	ghc $(GHCFLAGS) --make HelloWorld -threaded
 
 run: build
 	./HelloWorld

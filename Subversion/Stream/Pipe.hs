@@ -3,6 +3,22 @@ module Subversion.Stream.Pipe
     )
     where
 
+{-
+  !!!!!!!!!! 警告 !!!!!!!!!!
+
+  實裝を見れば判ると思ふが、このパイプは讀み込みが追ひ付かなくても書き
+  込み側がブロックされない。一つの native thread（複數の GHC thread）で
+  svn_repos_fs_commit_txn と svn_stream_read が STM を使って互ひにブロッ
+  クし合ふと何故か CPU を 100% 喰ひ潰してハングアップする爲である。
+  foreign function wrapper からの STM トランザクションに問題があるのか
+  も知れないが、何れにせよ原因は不明。発現した GHC のバージョンは
+  6.8.2。
+
+  現在の實裝ではパイプに書き込まれた内容は讀み取られるまで一方的にメモ
+  リに蓄積されるので注意を要する。使ひ方によっては DoS 攻撃の的にされ得
+  る。
+-}
+
 import           Control.Concurrent.STM
 import qualified Data.ByteString      as Strict
 import qualified Data.ByteString.Lazy as Lazy

@@ -9,8 +9,8 @@ run: build
 	$(MAKE) -C examples run
 
 dist/setup-config: $(CABAL_FILE) configure Setup
-	env EXTRA_CPPFLAGS="-I/sw/include/subversion-1 -I/sw/include/apr-0" EXTRA_LDFLAGS="-L/sw/lib" ./Setup configure -p -O --enable-split-objs
-#	env EXTRA_CPPFLAGS="-I/sw/include/subversion-1 -I/sw/include/apr-0" EXTRA_LDFLAGS="-L/sw/lib" ./Setup configure --disable-optimization
+	env EXTRA_CPPFLAGS="-I/usr/pkg/include/subversion-1 -I/usr/pkg/include/apr-1" EXTRA_LDFLAGS="-L/usr/pkg/lib" ./Setup configure -O
+#	env EXTRA_CPPFLAGS="-I/usr/pkg/include/subversion-1 -I/usr/pkg/include/apr-1" EXTRA_LDFLAGS="-L/usr/pkg/lib" ./Setup configure --disable-optimization
 
 configure: aclocal.m4 configure.ac
 	autoconf

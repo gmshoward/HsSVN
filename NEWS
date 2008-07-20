@@ -1,3 +1,8 @@
+Changes from 0.3.2 to 0.3.3
+---------------------------
+* configure:
+  - Fixed to search apr-1-config and apu-1-config as well.
+
 Changes from 0.3.1 to 0.3.2
 ---------------------------
 * Subversion.Repository:

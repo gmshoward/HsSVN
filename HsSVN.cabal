@@ -4,7 +4,7 @@ Description:
     HsSVN is a (part of) Subversion binding for Haskell. Currently it
     can do most things related to the Subversion FS but others are
     left uncovered.
-Version:       0.3.3
+Version:       0.4
 License:       PublicDomain
 License-File:  COPYING
 Author:        PHO <pho at cielonegro dot org>
@@ -13,7 +13,7 @@ Stability:     experimental
 Homepage:      http://cielonegro.org/HsSVN.html
 Category:      System
 Tested-With:   GHC == 6.8.1
-Cabal-Version: >= 1.2
+Cabal-Version: >= 1.2.3
 Build-Type: Configure
 
 Extra-Source-Files:

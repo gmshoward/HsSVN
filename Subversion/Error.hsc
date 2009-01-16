@@ -1,10 +1,10 @@
 {- -*- haskell -*- -}
 
--- #prune
+{-# OPTIONS_HADDOCK prune #-}
 
 -- |Common exception handling for Subversion. The C API of the
 -- Subversion returns an error as a function result, but in HsSVN
--- errors are thrown as a DynException.
+-- errors are thrown as an 'Control.Exception.Exception'.
 
 #include "HsSVN.h"
 
@@ -18,8 +18,6 @@ module Subversion.Error
     , svnErrMsg
 
     , svnErr -- private
-
-    , throwSvnErr
 
     , SvnErrCode(..)
     )
@@ -38,6 +36,13 @@ newtype SvnError
       deriving (Typeable)
 
 data SVN_ERROR_T
+
+instance Show SvnError where
+    show e = "SvnError " ++ show (svnErrCode e) ++ " " ++ show (svnErrMsg e)
+
+instance Exception SvnError where
+    toException = SomeException
+    fromException (SomeException e) = cast e
 
 
 foreign import ccall "svn_err_best_message"
@@ -85,12 +90,7 @@ svnErr f
     = do err <- wrapSvnError =<< f
          case err of
            Nothing -> return ()
-           Just e  -> throwSvnErr e
-
--- |@'throwSvnErr' err@ throws an 'SvnError' object in an IO
--- monad. You usually don't need to use this directly.
-throwSvnErr :: SvnError -> IO a
-throwSvnErr = throwIO . DynException . toDyn
+           Just e  -> throwIO e
 
 -- |@'SvnErrCode'@ represents a Subversion error code. As you see, not
 -- all errors are translated to Haskell constructors yet. Uncovered

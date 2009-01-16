@@ -213,7 +213,7 @@ commitTxn repos txn
                       -> if svnErrCode e == FsConflict then
                              return . Left =<< peekCString =<< peek conflictPathPtrPtr
                          else
-                             throwSvnErr e
+                             throwIO e
 
 -- |@'doReposTxn'@ tries to do the transaction. If it succeeds
 -- 'doReposTxn' automatically commits it, but if it throws an
@@ -243,7 +243,7 @@ doReposTxn repos revNum author logMsg c
     = do txn <- beginTxn repos revNum author logMsg
          handle (cleanUp txn) (tryTxn txn)
     where
-      cleanUp :: Transaction -> Exception -> IO a
+      cleanUp :: Transaction -> SomeException -> IO a
       cleanUp txn exn
           = abortTxn txn
             >>

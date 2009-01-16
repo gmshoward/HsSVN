@@ -1,6 +1,6 @@
 {- -*- haskell -*- -}
 
--- #prune
+{-# OPTIONS_HADDOCK prune #-}
 
 -- |Some type definitions for Subversion.
 

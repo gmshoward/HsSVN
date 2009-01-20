@@ -40,9 +40,7 @@ data SVN_ERROR_T
 instance Show SvnError where
     show e = "SvnError " ++ show (svnErrCode e) ++ " " ++ show (svnErrMsg e)
 
-instance Exception SvnError where
-    toException = SomeException
-    fromException (SomeException e) = cast e
+instance Exception SvnError
 
 
 foreign import ccall "svn_err_best_message"

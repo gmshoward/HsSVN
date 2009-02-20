@@ -1,3 +1,8 @@
+Changes from 0.4 to 0.4.1
+-------------------------
+* Fixed incorrect dependency declaration in HsSVN.cabal. No semantical
+  changes to the code.
+
 Changes from 0.3.3 to 0.4
 -------------------------
 * Fixed breakage on GHC 6.10.1. And now it requires 6.10.1...

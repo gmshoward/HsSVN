@@ -13,9 +13,8 @@ Stability:     experimental
 Homepage:      http://cielonegro.org/HsSVN.html
 Category:      System
 Tested-With:   GHC == 6.8.1
-Cabal-Version: >= 1.2.3
+Cabal-Version: >= 1.6
 Build-Type: Configure
-
 Extra-Source-Files:
     HsSVN.buildinfo.in
     NEWS
@@ -25,9 +24,13 @@ Extra-Source-Files:
     examples/Makefile
     examples/HelloWorld.hs
 
+Source-Repository head
+    Type: darcs
+    Location: http://darcs.cielonegro.org/HsSVN/
+
 Library
     Build-Depends:
-        base, bytestring, mtl, stm
+        base >= 4, bytestring, mtl, stm
     Exposed-Modules:
         Subversion
         Subversion.Config

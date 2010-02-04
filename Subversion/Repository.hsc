@@ -141,8 +141,9 @@ createRepository path configPairs fsConfigPairs
                     repos <- wrapRepos (touchPool pool) =<< peek reposPtrPtr
 
                     -- We want config and fsConfig to be alive until the repos dies.
-                    GF.addForeignPtrConcFinalizer (case repos of Repository x -> x)
-                          $ (touchHash config >> touchHash fsConfig)
+                    GF.addForeignPtrConcFinalizer
+                          (case repos of Repository x -> x)
+                          (touchHash config >> touchHash fsConfig)
 
                     return repos
 
@@ -172,18 +173,17 @@ beginTxn repos revNum author logMsg
              withCString  author $ \ authorPtr ->
              withCString' logMsg $ \ logMsgPtr ->
              withPoolPtr  pool   $ \ poolPtr   ->
-             (svnErr $
-              _fs_begin_txn_for_commit
-              txnPtrPtr
-              reposPtr
-              (fromIntegral revNum)
-              authorPtr
-              logMsgPtr
-              poolPtr)
+             svnErr (_fs_begin_txn_for_commit
+                     txnPtrPtr
+                     reposPtr
+                     (fromIntegral revNum)
+                     authorPtr
+                     logMsgPtr
+                     poolPtr)
              >>  peek txnPtrPtr
-             >>= (wrapTxn $
-                  -- txn depends on both pool and repos.
-                  touchPool pool >> touchRepos repos)
+             >>= wrapTxn 
+                     -- txn depends on both pool and repos.
+                     (touchPool pool >> touchRepos repos)
     where
       withCString' :: Maybe String -> (CString -> IO a) -> IO a
       withCString' Nothing    f = f nullPtr
@@ -198,12 +198,12 @@ commitTxn repos txn
              alloca             $ \ newRevPtr ->
              withTxnPtr  txn    $ \ txnPtr    ->
              withPoolPtr pool   $ \ poolPtr   ->
-             do err <- wrapSvnError =<< (_fs_commit_txn
-                                         conflictPathPtrPtr
-                                         reposPtr
-                                         newRevPtr
-                                         txnPtr
-                                         poolPtr)
+             do err <- wrapSvnError =<< _fs_commit_txn
+                                        conflictPathPtrPtr
+                                        reposPtr
+                                        newRevPtr
+                                        txnPtr
+                                        poolPtr
                 case err of
                   Nothing
                       -> liftM (Right . fromIntegral) (peek newRevPtr)

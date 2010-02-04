@@ -79,13 +79,13 @@ instance Monad Txn where
     fail    = Txn . fail
 
 instance MonadFS Txn where
-    getRoot        = Txn (ask >>= return . ctxRoot)
+    getRoot        = Txn (fmap ctxRoot ask)
     unsafeIOToFS a = Txn (liftIO a)
     isTransaction  = Txn (return True)
 
 
 getTxn :: Txn Transaction
-getTxn = Txn (ask >>= return . ctxTxn)
+getTxn = Txn (fmap ctxTxn ask)
 
 
 {- functions and types ------------------------------------------------------- -}
@@ -170,11 +170,11 @@ getTransactionRoot txn
          alloca $ \ rootPtrPtr ->
              withTxnPtr  txn  $ \ txnPtr  ->
              withPoolPtr pool $ \ poolPtr ->
-             (svnErr $ _txn_root rootPtrPtr txnPtr poolPtr)
+             svnErr (_txn_root rootPtrPtr txnPtr poolPtr)
              >>  peek rootPtrPtr
-             >>= (wrapFSRoot $
-                  -- The root depends on both pool and txn.
-                  touchPool pool >> touchTxn txn)
+             >>= wrapFSRoot
+                     -- The root depends on both pool and txn.
+                     (touchPool pool >> touchTxn txn)
 
 -- |@'getTxnProp' propName@ returns the value of the property named
 -- @propName@ on the transaction.
@@ -205,9 +205,8 @@ getTxnPropList
                  do svnErr $ _txn_proplist hashPtrPtr txnPtr poolPtr
                     hash <- wrapHash (touchPool pool) =<< peek hashPtrPtr
                     mapHash' (\ (n, v)
-                                  -> peekSvnString v
-                                     >>=
-                                     return . ((,) n) . B8.unpack) hash
+                                  -> fmap ((,) n . B8.unpack) (peekSvnString v))
+                             hash
 
 -- |@'setTxnProp' propName propValue@ changes, adds or deletes a
 -- property on the transaction.

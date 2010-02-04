@@ -22,16 +22,16 @@ data SVN_STRING_T
 
 
 pokeData :: Ptr SVN_STRING_T -> Ptr CChar -> IO ()
-pokeData = (#poke svn_string_t, data)
+pokeData = #poke svn_string_t, data
 
 peekData :: Ptr SVN_STRING_T -> IO (Ptr CChar)
-peekData = (#peek svn_string_t, data)
+peekData = #peek svn_string_t, data
 
 pokeLen :: Ptr SVN_STRING_T -> APR_SIZE_T -> IO ()
-pokeLen = (#poke svn_string_t, len)
+pokeLen = #poke svn_string_t, len
 
 peekLen :: Ptr SVN_STRING_T -> IO APR_SIZE_T
-peekLen = (#peek svn_string_t, len)
+peekLen = #peek svn_string_t, len
 
 
 withSvnString :: Strict.ByteString -> (Ptr SVN_STRING_T -> IO a) -> IO a
@@ -63,4 +63,4 @@ peekSvnString' obj
     | obj == nullPtr
         = return Nothing
     | otherwise
-        = peekSvnString obj >>= return . Just
+        = fmap Just (peekSvnString obj)

@@ -45,8 +45,7 @@ mkReadAction :: Pipe -> ReadAction
 mkReadAction pipe reqLen = loop
     where
       loop :: IO Strict.ByteString
-      loop = do nextAction <- tryToRead
-                nextAction
+      loop = join tryToRead
 
       tryToRead :: IO (IO Strict.ByteString)
       tryToRead
@@ -79,8 +78,7 @@ mkWriteAction :: Pipe -> WriteAction
 mkWriteAction pipe input = loop input >> return (Strict.length input)
     where
       loop :: Strict.ByteString -> IO ()
-      loop str = do nextAction <- tryToWrite str
-                    nextAction
+      loop str = join (tryToWrite str)
 
       tryToWrite :: Strict.ByteString -> IO (IO ())
       tryToWrite str
@@ -100,7 +98,7 @@ mkWriteAction pipe input = loop input >> return (Strict.length input)
                               retry
                         else
                           do writtenStr <- readTVar (pWrittenStr pipe)
-                             writeTVar (pWrittenStr pipe) (writtenStr `Lazy.append` (Lazy.fromChunks [strToWrite]))
+                             writeTVar (pWrittenStr pipe) (writtenStr `Lazy.append` Lazy.fromChunks [strToWrite])
                              writeTVar (pRequestLen pipe) (reqLen - Strict.length strToWrite)
                              return (loop remaining)
 

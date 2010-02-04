@@ -62,7 +62,7 @@ class HashValue a where
 
 instance HashValue String where
     marshal str
-        = mallocStringForeignPtr str >>= return . castForeignPtr
+        = fmap castForeignPtr $ mallocStringForeignPtr str
 
     unmarshal finalizer strPtr
         = do str <- peekCString (castPtr strPtr)
@@ -164,8 +164,7 @@ lookup hash key
              -- valuePtr may be freed at the same time when hash gets
              -- freed, but that must not happen before doing
              -- unmarshal.
-             unmarshal (touchHash hash) valuePtr
-             >>= return . Just
+             fmap Just $ unmarshal (touchHash hash) valuePtr
 
 
 getFirst :: Hash a -> IO (Maybe (HashIndex a))
@@ -231,7 +230,7 @@ mapHash f hash = getFirst hash >>= loop
     where
       loop Nothing    = return []
       loop (Just idx) = do x  <- f =<< getThis idx
-                           xs <- unsafeInterleaveIO $
+                           xs <- unsafeInterleaveIO
                                  (getNext idx >>= loop)
                            return (x:xs)
 
@@ -241,6 +240,6 @@ mapHash' f hash = getFirst hash >>= loop
     where
       loop Nothing    = return []
       loop (Just idx) = do x  <- f =<< getThis' idx
-                           xs <- unsafeInterleaveIO $
+                           xs <- unsafeInterleaveIO
                                  (getNext idx >>= loop)
                            return (x:xs)

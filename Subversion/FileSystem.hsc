@@ -99,17 +99,17 @@ fsVersion = _version >>= peekVersion
 -- |@'fsConfigFSType'@ is a config key to specify the filesystem
 -- back-end.
 fsConfigFSType :: String
-fsConfigFSType = (#const_str SVN_FS_CONFIG_FS_TYPE)
+fsConfigFSType = #const_str SVN_FS_CONFIG_FS_TYPE
 
 -- |@'fsTypeBDB'@ is a config value representing the Berkeley-DB
 -- back-end.
 fsTypeBDB :: String
-fsTypeBDB = (#const_str SVN_FS_TYPE_BDB)
+fsTypeBDB = #const_str SVN_FS_TYPE_BDB
 
 -- |@'fsTypeFSFS'@ is a config value representing the
 -- Native-filesystem back-end.
 fsTypeFSFS :: String
-fsTypeFSFS = (#const_str SVN_FS_TYPE_FSFS)
+fsTypeFSFS = #const_str SVN_FS_TYPE_FSFS
 
 -- |@'createFileSystem'@ creates a new, empty Subversion
 -- filesystem. Note that creating a raw filesystem is different from
@@ -232,8 +232,7 @@ getFileSystemType path
              withCString path $ \ pathPtr ->
              withPoolPtr pool $ \ poolPtr ->
              do svnErr $ _type typePtrPtr pathPtr poolPtr
-                t <- peekCString =<< peek typePtrPtr
-                return t
+                peekCString =<< peek typePtrPtr
 
 -- |@'getFileSystemPath' fs@ returns the path to @fs@'s
 -- repository. Note that this is what was passed to 'createFileSystem'

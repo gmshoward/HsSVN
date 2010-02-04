@@ -117,8 +117,7 @@ getRevisionNumber :: Rev RevNum
 getRevisionNumber
     = do root <- getRoot
          unsafeIOToFS $ withFSRootPtr root $ \ rootPtr ->
-             _revision_root_revision rootPtr 
-                  >>= return . fromIntegral
+             (fmap fromIntegral (_revision_root_revision rootPtr))
 
 -- |@'getRevisionProp' propName@ returns the value of the property
 -- named @propName@ of the revision.
@@ -163,9 +162,8 @@ getRevisionPropList' fs revNum
              do svnErr $ _revision_proplist hashPtrPtr fsPtr (fromIntegral revNum) poolPtr
                 hash <- wrapHash (touchPool pool) =<< peek hashPtrPtr
                 mapHash' (\ (n, v)
-                              -> peekSvnString v
-                                 >>=
-                                 return . ((,) n) . B8.unpack) hash
+                              -> fmap ((,) n . B8.unpack) (peekSvnString v))
+                         hash
 
 -- |Change, add or delete a property on a revision. Note that revision
 -- properties are non-historied: you can change them after the

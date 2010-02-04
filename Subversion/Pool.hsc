@@ -22,9 +22,9 @@ foreign import ccall unsafe "&HsSVN_svn_pool_destroy"
 
 
 newPool :: IO Pool
-newPool = _create nullPtr
-          >>= newForeignPtr _destroy
-          >>= return . Pool
+newPool = fmap Pool ( _create nullPtr
+                      >>= newForeignPtr _destroy
+                    )
 
 
 withPoolPtr :: Pool -> (Ptr APR_POOL_T -> IO a) -> IO a

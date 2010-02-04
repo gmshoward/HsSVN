@@ -80,7 +80,7 @@ wrapSvnError errPtr
     | errPtr == nullPtr
         = return Nothing
     | otherwise
-        = newForeignPtr _clear errPtr >>= return . Just . SvnError
+        = fmap (Just . SvnError) (newForeignPtr _clear errPtr)
 
 
 svnErr :: IO (Ptr SVN_ERROR_T) -> IO ()

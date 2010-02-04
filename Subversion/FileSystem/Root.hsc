@@ -177,7 +177,7 @@ getFileMD5 path
              do svnErr $ _file_md5_checksum bufPtr rootPtr pathPtr poolPtr
                 return . map fromIntegral =<< peekArray md5Len bufPtr
     where
-      md5Len = (#const APR_MD5_DIGESTSIZE)
+      md5Len = #const APR_MD5_DIGESTSIZE
 
 
 -- |@'getFileContents' path@ returns the content of file @path@.
@@ -214,7 +214,7 @@ getFileContentsLBS path
              withFSRootPtr root $ \ rootPtr ->
                  withCString path $ \ pathPtr ->
                      withPoolPtr pool $ \ poolPtr ->
-                         (svnErr $ _file_contents ioPtrPtr rootPtr pathPtr poolPtr)
+                         svnErr (_file_contents ioPtrPtr rootPtr pathPtr poolPtr)
                          >>  peek ioPtrPtr
                          >>= wrapStream (touchPool pool)
                          >>= (if isTxn then
@@ -235,9 +235,8 @@ getNodePropList path
              do svnErr $ _node_proplist hashPtrPtr rootPtr pathPtr poolPtr
                 hash <- wrapHash (touchPool pool) =<< peek hashPtrPtr
                 mapHash' (\ (n, v)
-                              -> peekSvnString v
-                                 >>=
-                                 return . ((,) n) . B8.unpack) hash
+                              -> fmap ((,) n . B8.unpack) (peekSvnString v))
+                         hash
 
 -- |@'getNodeProp' path propName@ returns the value of the property
 -- named @propName@ of @path@ in a revision or transaction.

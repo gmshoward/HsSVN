@@ -51,8 +51,8 @@ data SVN_VERSION_T
 
 
 marshalBool :: Bool -> SVN_BOOLEAN_T
-marshalBool True  = (#const TRUE )
-marshalBool False = (#const FALSE)
+marshalBool True  = #const TRUE
+marshalBool False = #const FALSE
 
 unmarshalBool :: SVN_BOOLEAN_T -> Bool
 unmarshalBool (#const TRUE ) = True
@@ -96,13 +96,13 @@ peekVersion obj
 
 
 peekVerMajor :: Ptr SVN_VERSION_T -> IO Int
-peekVerMajor = (#peek svn_version_t, major)
+peekVerMajor = #peek svn_version_t, major
 
 peekVerMinor :: Ptr SVN_VERSION_T -> IO Int
-peekVerMinor = (#peek svn_version_t, minor)
+peekVerMinor = #peek svn_version_t, minor
 
 peekVerPatch :: Ptr SVN_VERSION_T -> IO Int
-peekVerPatch = (#peek svn_version_t, patch)
+peekVerPatch = #peek svn_version_t, patch
 
 peekVerTag :: Ptr SVN_VERSION_T -> IO CString
-peekVerTag = (#peek svn_version_t, tag)
+peekVerTag = #peek svn_version_t, tag

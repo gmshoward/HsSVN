@@ -205,7 +205,7 @@ sReadBS io maxLen
 
 
 sReadLBS :: Stream -> IO Lazy.ByteString
-sReadLBS io = lazyRead >>= return . L8.fromChunks
+sReadLBS io = fmap L8.fromChunks lazyRead
     where
       chunkSize = 32 * 1024
 
@@ -221,7 +221,7 @@ sReadLBS io = lazyRead >>= return . L8.fromChunks
 
 
 sStrictReadLBS :: Stream -> IO Lazy.ByteString
-sStrictReadLBS io = strictRead >>= return . L8.fromChunks
+sStrictReadLBS io = fmap L8.fromChunks strictRead
     where
       chunkSize = 32 * 1024
 

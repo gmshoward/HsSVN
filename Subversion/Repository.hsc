@@ -140,8 +140,7 @@ createRepository path configPairs fsConfigPairs
 
                     repos <- wrapRepos (touchPool pool) =<< peek reposPtrPtr
 
-                    -- config と fsConfig には、repos が死ぬまでは生き
-                    -- てゐて慾しい。
+                    -- We want config and fsConfig to be alive until the repos dies.
                     GF.addForeignPtrConcFinalizer (case repos of Repository x -> x)
                           $ (touchHash config >> touchHash fsConfig)
 
@@ -161,7 +160,7 @@ deleteRepository path
 getRepositoryFS :: Repository -> IO FileSystem
 getRepositoryFS repos
     = withReposPtr repos $ \ reposPtr ->
-      -- svn_fs_t* より先に svn_repos_t* が解放されては困る
+      -- svn_fs_t* depends on svn_repos_t*.
       _fs reposPtr >>= wrapFS (touchRepos repos)
 
 
@@ -183,7 +182,7 @@ beginTxn repos revNum author logMsg
               poolPtr)
              >>  peek txnPtrPtr
              >>= (wrapTxn $
-                  -- txn は pool にも repos にも依存する。
+                  -- txn depends on both pool and repos.
                   touchPool pool >> touchRepos repos)
     where
       withCString' :: Maybe String -> (CString -> IO a) -> IO a
@@ -289,20 +288,21 @@ dumpRepository :: Repository   -- ^ The repository.
 dumpRepository repos startRev endRev incremental useDeltas
     = do pool <- newPool
          pipe <- newPipe
-         forkIO $ do withReposPtr repos $ \ reposPtr ->
-                         withStreamPtr pipe $ \ pipePtr ->
-                         withPoolPtr pool $ \ poolPtr ->
-                         svnErr $ _dump_fs2 reposPtr
-                                            pipePtr
-                                            nullPtr
-                                            (fromMaybe invalidRevNum $ fmap fromIntegral startRev)
-                                            (fromMaybe invalidRevNum $ fmap fromIntegral endRev)
-                                            (marshalBool incremental)
-                                            (marshalBool useDeltas)
-                                            nullFunPtr
-                                            nullPtr
-                                            poolPtr
-                     sClose pipe
+         _    <- forkIO $
+                 do withReposPtr repos $ \ reposPtr ->
+                        withStreamPtr pipe $ \ pipePtr ->
+                        withPoolPtr pool $ \ poolPtr ->
+                        svnErr $ _dump_fs2 reposPtr
+                                           pipePtr
+                                           nullPtr
+                                           (fromMaybe invalidRevNum $ fmap fromIntegral startRev)
+                                           (fromMaybe invalidRevNum $ fmap fromIntegral endRev)
+                                           (marshalBool incremental)
+                                           (marshalBool useDeltas)
+                                           nullFunPtr
+                                           nullPtr
+                                           poolPtr
+                    sClose pipe
          sReadLBS pipe
     where
       invalidRevNum :: SVN_REVNUM_T

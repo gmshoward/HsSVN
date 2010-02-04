@@ -102,7 +102,7 @@ getRevisionRoot fs revNum
              withFSPtr fs $ \ fsPtr ->
              withPoolPtr pool $ \ poolPtr ->
                  do svnErr $ _revision_root rootPtrPtr fsPtr (fromIntegral revNum) poolPtr
-                    -- root は pool にも fs にも依存する。
+                    -- FS Root depends on both pool and fs.
                     wrapFSRoot (touchPool pool >> touchFS fs)
                         =<< peek rootPtrPtr
 
@@ -140,8 +140,8 @@ getRevisionProp' fs revNum name
              withPoolPtr pool $ \ poolPtr ->
              do svnErr $ _revision_prop valPtrPtr fsPtr (fromIntegral revNum) namePtr poolPtr
                 prop <- peekSvnString' =<< peek valPtrPtr
-                -- prop は pool の中から讀み取られるので、それが濟むま
-                -- で pool が死んでは困る。
+                -- We read prop in the pool so we don't want pool to
+                -- be freed that time.
                 touchPool pool
                 return $ fmap B8.unpack prop
 
@@ -226,8 +226,8 @@ getNodeHistory crossCopies path
                got <- peek histPtrPtr
 
                if got == nullPtr then
-                   -- ヒストリの終端に達した。これ以後、Pool は解放され
-                   -- ても構はない。
+                   -- We reached at the end of history. The pool may
+                   -- be freed from now.
                    touchPool pool >> return []
                  else
                    do x  <- getHistLocation got pool

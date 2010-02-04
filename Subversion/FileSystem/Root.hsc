@@ -147,7 +147,6 @@ touchFSRoot (FileSystemRoot root) = touchForeignPtr root
 getRootFS :: FileSystemRoot -> IO FileSystem
 getRootFS root
     = withFSRootPtr root $ \ rootPtr ->
-      -- 實際には root が生きてゐる限り fs は死なないのだが、念の爲。
       wrapFS (touchFSRoot root) =<< _root_fs rootPtr
 
 -- |@'getFileLength' path@ returns the length of file @path@.
@@ -253,8 +252,8 @@ getNodeProp path name
              withPoolPtr   pool $ \ poolPtr ->
                  do svnErr $ _node_prop valPtrPtr rootPtr pathPtr namePtr poolPtr
                     prop <- peekSvnString' =<< peek valPtrPtr
-                    -- prop は pool の中から讀み取られるので、それが濟
-                    -- むまで pool が死んでは困る。
+                    -- We read prop in the pool so we don't want pool
+                    -- to be freed that time.
                     touchPool pool
                     return $ fmap B8.unpack prop
 

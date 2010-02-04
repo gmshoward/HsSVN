@@ -144,7 +144,7 @@ newStream actions
       mkReadFnPtr ra
           = mkReadCallback $ \ _ bufPtr lenPtr ->
             do requestedLen <- liftM fromIntegral (peek lenPtr)
-               resultStr    <- ra requestedLen -- FIXME: 例外を catch すべき
+               resultStr    <- ra requestedLen -- FIXME: should catch exceptions
                B8.useAsCStringLen resultStr $ \ (resultPtr, resultLen) ->
                    do when (resultLen > requestedLen)
                            $ fail "resultLen > requestedLen" -- FIXME
@@ -157,14 +157,14 @@ newStream actions
           = mkWriteCallback $ \ _ bufPtr lenPtr ->
             do requestedLen <- liftM fromIntegral (peek lenPtr)
                inputStr     <- B8.packCStringLen (bufPtr, requestedLen)
-               writtenLen   <- wa inputStr -- FIXME: 例外を catch すべき
+               writtenLen   <- wa inputStr -- FIXME: should catch exceptions
                poke lenPtr (fromIntegral writtenLen)
                return nullPtr
 
       mkCloseFnPtr :: CloseAction -> IO (FunPtr CloseCallback)
       mkCloseFnPtr ca
           = mkCloseCallback $ \ _ ->
-            do ca -- FIXME: 例外を catch すべき
+            do ca -- FIXME: should catch exceptions
                return nullPtr
 
 

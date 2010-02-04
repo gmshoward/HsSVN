@@ -128,10 +128,9 @@ new = do pool <- newPool
          withPoolPtr pool $ \ poolPtr ->
              _make poolPtr >>= wrapHash (touchPool pool)
 
--- 一旦 Hash に入れた値は、Hash 自体が解放されるまでは解放されなくなる
--- 事に注意。それがまずいのであれば、Hash 自体に Map (Ptr ())
--- (ForeignPtr ()) を持たせて、その Map を同時に管理しなければならない。
--- 面倒だ。
+-- Any values which have been put in the Hash will not be freed until
+-- Hash gets freed. If this is a problem, we have to let Hash have Map
+-- (Ptr ()) (ForeignPtr ()) and maintain it together. Annoying.
 update :: HashValue a => Hash a -> String -> a -> IO ()
 update (Hash hash) key value
     = withForeignPtr hash $ \ hashPtr ->
@@ -141,7 +140,7 @@ update (Hash hash) key value
               (castPtr $ unsafeForeignPtrToPtr keyFPtr)
               (#const APR_HASH_KEY_STRING)
               (unsafeForeignPtrToPtr valueFPtr)
-         -- hash よりも key 及び value が先に解放されては困る。
+         -- key and value must not be freed before hash.
          GF.addForeignPtrConcFinalizer hash
                $ do touchForeignPtr keyFPtr
                     touchForeignPtr valueFPtr
@@ -162,8 +161,9 @@ lookup hash key
          if valuePtr == nullPtr then
              return Nothing
            else
-             -- valuePtr は hash の解放と同時に解放され得るのだが、
-             -- unmarshal する前にそれが起きては困る。
+             -- valuePtr may be freed at the same time when hash gets
+             -- freed, but that must not happen before doing
+             -- unmarshal.
              unmarshal (touchHash hash) valuePtr
              >>= return . Just
 

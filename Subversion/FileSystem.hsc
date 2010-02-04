@@ -36,7 +36,6 @@ module Subversion.FileSystem
     )
     where
 
-import           Control.Monad
 import           Foreign.C.String
 import           Foreign.ForeignPtr
 import           Foreign.Ptr
@@ -156,7 +155,7 @@ createFileSystem path configPairs
 
                     fs <- wrapFS (touchPool pool) =<< peek fsPtrPtr
 
-                    -- config には fs が死ぬまでは生きてゐて慾しい。
+                    -- We want config to be alive until the fs dies.
                     GF.addForeignPtrConcFinalizer (case fs of FileSystem x -> x)
                           $ touchHash config
 
@@ -182,7 +181,7 @@ openFileSystem path configPairs
 
                 fs <- wrapFS (touchPool pool) =<< peek fsPtrPtr
 
-                -- config には fs が死ぬまでは生きてゐて慾しい。
+                -- We want config to be alive until the fs dies.
                 GF.addForeignPtrConcFinalizer (case fs of FileSystem x -> x)
                       $ touchHash config
 

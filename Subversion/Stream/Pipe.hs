@@ -8,7 +8,6 @@ import           Control.Concurrent.STM
 import           Control.Monad
 import qualified Data.ByteString      as Strict
 import qualified Data.ByteString.Lazy as Lazy
-import           Data.Int
 import           Subversion.Stream
 
 

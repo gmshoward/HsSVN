@@ -41,7 +41,6 @@ module Subversion.FileSystem.Transaction
     where
 
 import           Control.Monad.Reader
-import           Control.Monad
 import qualified Data.ByteString.Char8      as B8
 import qualified Data.ByteString.Lazy       as Lazy        (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as L8   hiding (ByteString)
@@ -174,7 +173,7 @@ getTransactionRoot txn
              (svnErr $ _txn_root rootPtrPtr txnPtr poolPtr)
              >>  peek rootPtrPtr
              >>= (wrapFSRoot $
-                  -- root は pool にも txn にも依存する。
+                  -- The root depends on both pool and txn.
                   touchPool pool >> touchTxn txn)
 
 -- |@'getTxnProp' propName@ returns the value of the property named
@@ -189,8 +188,8 @@ getTxnProp name
              withPoolPtr pool $ \ poolPtr ->
                  do svnErr $ _txn_prop valPtrPtr txnPtr namePtr poolPtr
                     prop <- peekSvnString' =<< peek valPtrPtr
-                    -- prop は pool の中から讀み取られるので、それが濟
-                    -- むまでは pool が死んでは困る。
+                    -- We read prop in the pool so we don't want pool
+                    -- to be freed that time.
                     touchPool pool
                     return $ fmap B8.unpack prop
 

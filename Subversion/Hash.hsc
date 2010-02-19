@@ -88,6 +88,9 @@ foreign import ccall unsafe "apr_hash_this"
 foreign import ccall unsafe "apr_hash_next"
         _next :: Ptr APR_HASH_INDEX_T -> IO (Ptr APR_HASH_INDEX_T)
 
+foreign import ccall unsafe "apr_hash_pool_get"
+        _pool :: Ptr APR_HASH_T -> IO (Ptr APR_POOL_T)
+
 
 wrapHash :: IO () -> Ptr APR_HASH_T -> IO (Hash a)
 wrapHash finalizer hashPtr
@@ -169,14 +172,16 @@ lookup hash key
 
 getFirst :: Hash a -> IO (Maybe (HashIndex a))
 getFirst hash
-    = do pool <- newPool
-         withPoolPtr pool $ \ poolPtr ->
-             withHashPtr hash $ \ hashPtr ->
-             do idxPtr <- _first poolPtr hashPtr
-                if idxPtr == nullPtr then
-                    return Nothing
-                  else
-                    liftM Just $ wrapHashIdx (touchPool pool) idxPtr
+    = withHashPtr hash $ \ hashPtr ->
+      do poolPtr <- _pool hashPtr
+         -- The resulting idx must keep the hashtable itself alive
+         -- during its lifetime. We must reuse the hashtable's memory
+         -- pool.
+         idxPtr  <- _first poolPtr hashPtr
+         if idxPtr == nullPtr then
+             return Nothing
+           else
+             liftM Just $ wrapHashIdx (touchHash hash) idxPtr
 
 
 getThis :: HashValue a => HashIndex a -> IO (String, a)
@@ -200,14 +205,10 @@ getThis' idx
          return (key, castPtr valPtr)
 
 
-getNext :: HashIndex a -> IO (Maybe (HashIndex a))
-getNext idx
+next :: HashIndex a -> IO Bool
+next idx
     = withHashIdxPtr idx $ \ idxPtr ->
-      do idxPtr' <- _next idxPtr
-         if idxPtr' == nullPtr then
-             return Nothing
-           else
-             liftM Just $ wrapHashIdx (touchHashIdx idx) idxPtr'
+      fmap (/= nullPtr) (_next idxPtr)
                     
 
 pairsToHash :: HashValue a => [(String, a)] -> IO (Hash a)
@@ -230,8 +231,12 @@ mapHash f hash = getFirst hash >>= loop
     where
       loop Nothing    = return []
       loop (Just idx) = do x  <- f =<< getThis idx
-                           xs <- unsafeInterleaveIO
-                                 (getNext idx >>= loop)
+                           xs <- unsafeInterleaveIO $
+                                 do hasNext <- next idx
+                                    if hasNext then
+                                        loop (Just idx)
+                                      else
+                                        return []
                            return (x:xs)
 
 
@@ -240,6 +245,10 @@ mapHash' f hash = getFirst hash >>= loop
     where
       loop Nothing    = return []
       loop (Just idx) = do x  <- f =<< getThis' idx
-                           xs <- unsafeInterleaveIO
-                                 (getNext idx >>= loop)
+                           xs <- unsafeInterleaveIO $
+                                 do hasNext <- next idx
+                                    if hasNext then
+                                        loop (Just idx)
+                                      else
+                                        return []
                            return (x:xs)

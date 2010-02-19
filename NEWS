@@ -1,3 +1,10 @@
+Changes from 0.4.2 to 0.4.3
+---------------------------
+* Fixed a serious bug which leads to segmentation fault at
+  apr_hash_next. The hidden module Subversion.Hash was handling APR
+  memory pools wrongly.
+
+
 Changes from 0.4.1 to 0.4.2
 ---------------------------
 * Fixed breakage on GHC 6.12.1.

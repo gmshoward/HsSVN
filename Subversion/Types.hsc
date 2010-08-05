@@ -72,7 +72,7 @@ unmarshalNodeKind (#const svn_node_file) = FileNode
 unmarshalNodeKind (#const svn_node_dir ) = DirNode
 unmarshalNodeKind _                      = undefined
 
--- |@'Version'@ is version.
+-- |@'Version'@ represents a version number.
 data Version = Version {
       verMajor :: Int    -- ^ Major version number.
     , verMinor :: Int    -- ^ Minor version number.

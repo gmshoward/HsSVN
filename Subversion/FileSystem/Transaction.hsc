@@ -241,13 +241,13 @@ applyText
     :: FilePath     -- ^ The file to be replaced. If it does not exist
                     --   in the transaction, 'applyText' throws an
                     --   error. That is, you can't use this action to
-                    --   create new files; use 'makeFile' to create an
-                    --   empty file first.
+                    --   create a new file; use 'makeFile' to create
+                    --   an empty file first.
     -> Maybe String -- ^ The hex MD5 digest for the new content. It is
-                    --   ignored if 'Prelude.Nothing', but if not
+                    --   ignored if 'Prelude.Nothing'. But if it's not
                     --   'Prelude.Nothing', it must match the checksum
-                    --   of the content; if it doesn't, 'applyText'
-                    --   throws an error.
+                    --   of the content or 'applyText' throws an
+                    --   error.
     -> String       -- ^ The new content. 
                     --
                     --   This argument is currently a 'Prelude.String'
@@ -278,8 +278,8 @@ applyTextLBS path resultMD5 contents
       withCString' Nothing    f = f nullPtr
       withCString' (Just str) f = withCString str f
 
--- |@'makeFile' fpath@ creates a new file named @fpath@. The initial
--- content of file is the empty string, and it has no properties.
+-- |@'makeFile' fpath@ creates a new empty file named @fpath@. The
+-- file is initially empty and has no properties.
 makeFile :: FilePath -> Txn ()
 makeFile path
     = do root <- getRoot
@@ -318,8 +318,8 @@ deleteEntry path
              withPoolPtr pool $ \ poolPtr ->
              svnErr $ _delete rootPtr pathPtr poolPtr
 
--- |@'copyEntry' fromRevNum fromPath toPath@ creates a copy of file
--- @fromPath@ in a revision @fromRevNum@ named @toPath@ in the
+-- |@'copyEntry' fromRevNum fromPath toPath@ creates a copy of the
+-- file @fromPath@ in a revision @fromRevNum@ to @toPath@ in the
 -- transaction.
 copyEntry :: RevNum -> FilePath -> FilePath -> Txn ()
 copyEntry fromRevNum fromPath toPath

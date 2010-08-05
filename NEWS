@@ -1,3 +1,15 @@
+Changes from 0.4.3 to 0.4.3.1
+-----------------------------
+* INSTALL:
+  - New file that describes how to build this abnormal package which
+    everyone fails to build. Believe me. It's Subversion's fault. It
+    offers no svn-config, no subversion.pc, and no subversion.m4.
+
+* configure: a small bugfix
+
+* Brushed up my poor English documentation.
+  
+
 Changes from 0.4.2 to 0.4.3
 ---------------------------
 * Fixed a serious bug which leads to segmentation fault at

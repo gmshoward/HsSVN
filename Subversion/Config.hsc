@@ -2,8 +2,8 @@
 
 -- |An interface to client configuration files (svn_config.h).
 --
--- As you see, this module is totally incomplete. If you need this,
--- you must write a patch.
+-- As you see, this module is totally a stub. If you need this, you
+-- must write a patch.
 
 module Subversion.Config
     ( Config

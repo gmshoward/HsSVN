@@ -21,18 +21,18 @@ import           Subversion.Types
 -- unavailable in this binding. Add one if you really need it.
 data PathChange = PathChange {
       pcChangeKind :: ChangeKind -- ^ Kind of change.
-    , pcTextMod    :: Bool       -- ^ Were there text modifications?
-    , pcPropMod    :: Bool       -- ^ Were there property modifications?
+    , pcTextMod    :: Bool       -- ^ Was the content modified in any way?
+    , pcPropMod    :: Bool       -- ^ Were there any properties modified?
     } deriving (Show, Eq)
 
 
 type SVN_FS_PATH_CHANGE_KIND_T = #type svn_fs_path_change_kind_t
 
 -- |The kind of change that occured on the path.
-data ChangeKind = ModifiedPath -- ^ defalut value
-                | AddedPath    -- ^ path added in txn
-                | DeletedPath  -- ^ path removed in txn
-                | ReplacedPath -- ^ path removed and re-added in txn
+data ChangeKind = ModifiedPath -- ^ Only modified.
+                | AddedPath    -- ^ The path was added in the txn.
+                | DeletedPath  -- ^ The path was removed in the txn.
+                | ReplacedPath -- ^ The path was removed and re-added in the txn.
                   deriving (Show, Eq)
 
 

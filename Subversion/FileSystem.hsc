@@ -91,12 +91,12 @@ withFSPtr (FileSystem fs) = withForeignPtr fs
 touchFS :: FileSystem -> IO ()
 touchFS (FileSystem fs) = touchForeignPtr fs
 
--- |@fsVersion@ returns a version information of the libsvn_fs.
+-- |@fsVersion@ returns the version number of the libsvn_fs.
 fsVersion :: IO Version
 fsVersion = _version >>= peekVersion
 
 
--- |@'fsConfigFSType'@ is a config key to specify the filesystem
+-- |@'fsConfigFSType'@ is a config key to choose a filesystem
 -- back-end.
 fsConfigFSType :: String
 fsConfigFSType = #const_str SVN_FS_CONFIG_FS_TYPE
@@ -112,8 +112,8 @@ fsTypeFSFS :: String
 fsTypeFSFS = #const_str SVN_FS_TYPE_FSFS
 
 -- |@'createFileSystem'@ creates a new, empty Subversion
--- filesystem. Note that creating a raw filesystem is different from
--- creating a repository. If you want a new repository, use
+-- filesystem. Note that creating a raw filesystem and creating a
+-- repository is not the same thing. If you want a new repository, use
 -- 'Subversion.Repository.createRepository' instead.
 createFileSystem
     :: FilePath           -- ^ Where to create the filesystem. The
@@ -122,28 +122,27 @@ createFileSystem
     -> [(String, String)] -- ^ A list of @(key, value)@ tuples which
                           --   modifies the behavior of the
                           --   filesystem. The interpretation of it is
-                          --   specific to the filesystem back-end.
+                          --   up to the filesystem back-end.
                           -- 
                           --   If the list contains a value for
                           --   'fsConfigFSType', that value determines
                           --   the filesystem type for the new
-                          --   filesystem. Currently defined values
-                          --   are:
+                          --   filesystem. These values are currently
+                          --   defined:
                           --
                           --   ['fsTypeBDB'] Berkeley-DB implementation
                           --
                           --   ['fsTypeFSFS'] Native-filesystem
                           --   implementation
                           --
-                          --   If the list does not contain a value
-                          --   for 'fsConfigFSType' then the default
+                          --   If the list does not contain
+                          --   'fsConfigFSType' then the default
                           --   filesystem type will be used. This will
                           --   typically be BDB for version 1.1 and
-                          --   FSFS for later versions, though the
-                          --   caller should not rely upon any
-                          --   particular default if they wish to
-                          --   ensure that a filesystem of specific
-                          --   type is created.
+                          --   FSFS for later versions, though you
+                          --   should not rely upon any particular
+                          --   default value if you want a filesystem
+                          --   of specific type.
     -> IO FileSystem      -- ^ The new filesystem.
 createFileSystem path configPairs
     = do pool <- newPool
@@ -169,7 +168,7 @@ openFileSystem
     -> [(String, String)] -- ^ A list of @(key, value)@ tuples which
                           --   modifies the behavior of the
                           --   filesystem. The interpretation of it is
-                          --   specific to the filesystem back-end.
+                          --   up to the filesystem back-end.
     -> IO FileSystem
 openFileSystem path configPairs
     = do pool <- newPool
@@ -201,13 +200,13 @@ deleteFileSystem path
 -- from one location to another.
 hotCopyFileSystem :: FilePath -- ^ Source
                   -> FilePath -- ^ Destination
-                  -> Bool     -- ^ If this is true,
-                              --   @'hotCopyFileSystem'@ performs
-                              --   cleanup on the source filesystem as
-                              --   part of the copy opeation;
-                              --   currently, this means deleting
-                              --   copied, unused logfiles for a
-                              --   Berkeley DB source filesystem.
+                  -> Bool     -- ^ If 'True', @'hotCopyFileSystem'@
+                              --   performs cleanup on the source
+                              --   filesystem as part of the copy
+                              --   opeation; currently, this means
+                              --   deleting copied, unused logfiles
+                              --   for a Berkeley DB source
+                              --   filesystem.
                   -> IO ()
 hotCopyFileSystem src dest clean
     = do pool <- newPool
@@ -236,7 +235,7 @@ getFileSystemType path
 
 -- |@'getFileSystemPath' fs@ returns the path to @fs@'s
 -- repository. Note that this is what was passed to 'createFileSystem'
--- or 'openFileSystem'; might be absolute, might not.
+-- or 'openFileSystem'; might be absolute, might be not.
 getFileSystemPath :: FileSystem -> IO FilePath
 getFileSystemPath fs
     = do pool <- newPool
@@ -246,9 +245,8 @@ getFileSystemPath fs
                 touchPool pool
                 return path
 
--- |@'getYoungestRev' fs@ returns the number of the youngest revision
--- in filesystem @fs@. The oldest revision in any filesystem is
--- numbered zero.
+-- |@'getYoungestRev' fs@ returns the youngest revision number in
+-- filesystem @fs@. The revision number starts from zero.
 getYoungestRev :: FileSystem -> IO RevNum
 getYoungestRev fs
     = do pool <- newPool

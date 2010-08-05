@@ -43,12 +43,13 @@ import           System.IO.Unsafe
 
 {- Monad Rev ----------------------------------------------------------------- -}
 
--- |@'Rev' a@ is a FS monad which reads data from an existing revision
--- and finally returns @a@. See 'Subversion.FileSystem.Root.MonadFS'.
+-- |@'Rev' a@ is a FS monad which reads some data from an existing
+-- revision and finally returns @a@. See
+-- 'Subversion.FileSystem.Root.MonadFS'.
 --
 -- Since 'Rev' monad does no transactions,
 -- 'Subversion.FileSystem.Root.unsafeIOToFS' isn't really unsafe. You
--- can do any I\/O actions in the monad if you wish.
+-- can do any I\/O actions in a monadic computation if you wish.
 newtype Rev a = Rev { unRev :: ReaderT FileSystemRoot IO a }
 
 instance Functor Rev where
@@ -152,7 +153,7 @@ getRevisionPropList
          revNum <- getRevisionNumber
          unsafeIOToFS $ getRevisionPropList' fs revNum
 
--- |Return the entire property list of a revision.
+-- |Return the entire property list of the given revision.
 getRevisionPropList' :: FileSystem -> RevNum -> IO [(String, String)]
 getRevisionPropList' fs revNum
     = do pool <- newPool
@@ -169,7 +170,7 @@ getRevisionPropList' fs revNum
 -- properties are non-historied: you can change them after the
 -- revision has been comitted. They are not protected via
 -- transactions.
-setRevisionProp :: FileSystem   -- ^ The transaction
+setRevisionProp :: FileSystem   -- ^ The filesystem
                 -> RevNum       -- ^ The revision
                 -> String       -- ^ The property name
                 -> Maybe String -- ^ The property value
@@ -190,13 +191,13 @@ setRevisionProp fs revNum name valStr
 -- Revisions in the resulting list will be older than or the same age
 -- as the revision of that node in the target revision of 'Rev'
 -- monad. That is, if the 'Rev' monad is running on revision @X@, and
--- the node was modified in some revisions younger than @X@, those
--- revisions younger than @X@ will not be included in the list.
+-- the node has been modified in some revisions younger than @X@,
+-- those revisions younger than @X@ will not be included in the list.
 getNodeHistory
-    :: Bool                     -- ^ If this is true, stepping
-                                --   backwards in history would cross
-                                --   a copy operation. This is usually
-                                --   the desired behavior.
+    :: Bool                     -- ^ If 'True', stepping backwards in
+                                --   history would cross a copy
+                                --   operation. This is usually the
+                                --   desired behavior.
     -> FilePath                 -- ^ The path to node you want to read
                                 --   history.
     -> Rev [(RevNum, FilePath)] -- ^ A list of @(revNum, nodePath)@:

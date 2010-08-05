@@ -114,7 +114,7 @@ data SvnErrCode
                         --   appropriate 'SvnErrCode' constructors
                         --   because they may be added in the future
                         --   version of HsSVN. If that happens to you,
-                        --   your code stops working.
+                        --   your code will stop working.
       deriving (Show, Eq, Typeable)
 
 statusToErrCode :: APR_STATUS_T -> SvnErrCode

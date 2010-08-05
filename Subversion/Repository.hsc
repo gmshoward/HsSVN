@@ -111,8 +111,8 @@ openRepository path
                  do svnErr $ _open reposPtrPtr pathPtr poolPtr
                     wrapRepos (touchPool pool) =<< peek reposPtrPtr
 
--- |@'createRepository'@ creates a new Subversion repository, building
--- the necessary directory structure, creating filesystem, and so on.
+-- |@'createRepository'@ creates a new Subversion repository, builds a
+-- necessary directory structure, creates a filesystem, and so on.
 createRepository
     :: FilePath           -- ^ Where to create the repository.
     -> [(String, Config)] -- ^ A list of @(categoryName, config)@
@@ -215,11 +215,10 @@ commitTxn repos txn
                              throwIO e
 
 -- |@'doReposTxn'@ tries to do the transaction. If it succeeds
--- 'doReposTxn' automatically commits it, but if it throws an
--- exception 'doReposTxn' automatically cancels it and rethrow the
--- exception.
+-- 'doReposTxn' automatically commits it. When it throws an exception,
+-- 'doReposTxn' automatically cancels it and rethrows the exception.
 --
--- Because conflicts tend to occur more frequently than other errors,
+-- Since conflicts tend to occur more frequently than other errors,
 -- they aren't reported as an exception.
 doReposTxn
     :: Repository   -- ^ The repository.
@@ -231,11 +230,11 @@ doReposTxn
                     --   transaction property. This value may be
                     --   'Prelude.Nothing' if the message is not yet
                     --   available. The caller will need to attach one
-                    --   to the transaction at a later time.
+                    --   to the transaction later.
     -> Txn ()       -- ^ The transaction to be done.
     -> IO (Either FilePath RevNum) -- ^ The result is whether
                                    -- @'Prelude.Left' conflictPath@
-                                   -- (if it conflicted) or
+                                   -- (if it caused a conflict) or
                                    -- @'Prelude.Right' newRevNum@ (if
                                    -- it didn't).
 doReposTxn repos revNum author logMsg c
@@ -257,8 +256,8 @@ doReposTxn repos revNum author logMsg c
                commitTxn repos txn
 
 
--- |Lazily dump the contents of the filesystem within already-open
--- repository. Note that this action requires -threaded RTS.
+-- |Lazily dump the contents of the filesystem associated with the
+-- given repository. Note that this action requires -threaded RTS.
 dumpRepository :: Repository   -- ^ The repository.
                -> Maybe RevNum -- ^ @'Prelude.Nothing'@ to start
                                -- dumping at revision 0, or
@@ -266,8 +265,8 @@ dumpRepository :: Repository   -- ^ The repository.
                                -- revision @x@.
                -> Maybe RevNum -- ^ @'Prelude.Nothing'@ to dump
                                -- through the HEAD revision, or
-                               -- @'Prelude.Just' x@ to dump up
-                               -- through revision @x@.
+                               -- @'Prelude.Just' x@ to dump up to the
+                               -- revision @x@.
                -> Bool         -- ^ If this is @'Prelude.True'@, the
                                -- first revision dumped will be a diff
                                -- against the previous revision

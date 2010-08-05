@@ -1,8 +1,8 @@
 {- -*- haskell -*- -}
 
--- |HsSVN is a (part of) Subversion binding for Haskell. Currently it
--- can do most things related to the Subversion FS but others are left
--- uncoverd.
+-- |HsSVN is a partial Subversion (SVN) binding for Haskell. Currently
+-- it can do most things related to the Subversion FS but others are
+-- left uncoverd.
 --
 -- If you find out any features you want aren't supported, you must
 -- write your own patch (or take over the HsSVN project). Happy

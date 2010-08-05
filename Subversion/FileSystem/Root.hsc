@@ -188,14 +188,14 @@ getFileMD5 path
 -- does the operation /strictly/: I mean it loads the entire file onto
 -- the memory! This is because @svn_fs_file_contents()@ in the
 -- libsvn_fs doesn't guarantee, when we are in a transaction, that we
--- can progressively read a file which is suddenly modified in the
+-- can progressively read a file which was suddenly modified in the
 -- same transaction during the progressive reading.
 --
 -- I think 'getFileContents' might have to return
 -- @['Data.Word.Word8']@ instead of 'Prelude.String' because every
--- files in filesystem should be considered binary. Yes,
+-- files in a filesystem should be considered binary. Yes,
 -- 'Prelude.readFile' also returns 'Prelude.String' but this is an
--- immature part of Haskell. I wish someday the GHC gets more clear
+-- immature part of Haskell. I wish someday Haskell gets more clear
 -- distinction between binary data and an Unicode string, then I
 -- change the form of 'getFileContents' alike.
 getFileContents :: MonadFS m => FilePath -> m String
@@ -302,7 +302,7 @@ checkPath path
 
 -- |@'isDirectory' path@ returns 'Prelude.True' iff the @path@ points
 -- to a directory in a revision or transaction. It returns
--- 'Prelude.False' for inexistent path.
+-- 'Prelude.False' for nonexistent paths.
 isDirectory :: MonadFS m => FilePath -> m Bool
 isDirectory path
     = do root <- getRoot
@@ -316,7 +316,7 @@ isDirectory path
 
 -- |@'isFile' path@ returns 'Prelude.True' iff the @path@ points to a
 -- file in a revision or transaction. It returns 'Prelude.False' for
--- inexistent path.
+-- nonexistent paths.
 isFile :: MonadFS m => FilePath -> m Bool
 isFile path
     = do root <- getRoot

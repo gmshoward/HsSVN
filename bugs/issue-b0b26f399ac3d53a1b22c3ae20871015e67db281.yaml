@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Split bindings-apr, apu and svn from HsSVN
+desc: "Use this: http://hackage.haskell.org/package/bindings-DSL"
+type: :task
+component: HsSVN
+release: 
+reporter: PHO <pho@cielonegro.org>
+status: :unstarted
+disposition: 
+creation_time: 2010-08-05 16:27:39.847001 Z
+references: []
+
+id: b0b26f399ac3d53a1b22c3ae20871015e67db281
+log_events: 
+- - 2010-08-05 16:27:42.808514 Z
+  - PHO <pho@cielonegro.org>
+  - created
+  - ""

@@ -76,3 +76,5 @@
 ^examples/HelloWorld$
 ^examples/repository\.dump$
 ^examples/working($|/)
+
+^\.ditz-config$

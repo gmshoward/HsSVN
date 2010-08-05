@@ -1,0 +1,18 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Use extensible-exceptions instead of DynException
+desc: DynException is obsolete.
+type: :task
+component: HsSVN
+release: 
+reporter: PHO <pho@cielonegro.org>
+status: :unstarted
+disposition: 
+creation_time: 2010-08-05 16:30:21.459580 Z
+references: []
+
+id: b611effe92e316690d8785093b2804c527d00b40
+log_events: 
+- - 2010-08-05 16:30:22.756269 Z
+  - PHO <pho@cielonegro.org>
+  - created
+  - ""

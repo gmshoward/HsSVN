@@ -1,5 +1,8 @@
-{- -*- haskell -*- -}
-
+{-# LANGUAGE
+    DeriveDataTypeable
+  , EmptyDataDecls
+  , ForeignFunctionInterface
+  #-}
 -- |An interface to client configuration files (svn_config.h).
 --
 -- As you see, this module is totally a stub. If you need this, you

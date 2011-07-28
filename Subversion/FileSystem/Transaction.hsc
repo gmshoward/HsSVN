@@ -1,5 +1,8 @@
-{- -*- haskell -*- -}
-
+{-# LANGUAGE
+    DeriveDataTypeable
+  , EmptyDataDecls
+  , ForeignFunctionInterface
+  #-}
 {-# OPTIONS_HADDOCK prune #-}
 
 -- |An interface to functions that work on a filesystem transaction.

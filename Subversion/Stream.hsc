@@ -1,3 +1,8 @@
+{-# LANGUAGE
+    DeriveDataTypeable
+  , EmptyDataDecls
+  , ForeignFunctionInterface
+  #-}
 module Subversion.Stream
     ( Stream
     , SVN_STREAM_T

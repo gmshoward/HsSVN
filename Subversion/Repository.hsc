@@ -1,5 +1,8 @@
-{- -*- haskell -*- -}
-
+{-# LANGUAGE
+    DeriveDataTypeable
+  , EmptyDataDecls
+  , ForeignFunctionInterface
+  #-}
 -- |An interface to repository, which is built on top of the
 -- filesystem.
 

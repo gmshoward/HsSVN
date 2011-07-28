@@ -1,11 +1,25 @@
-AC_INIT([HsSVN], [], [phonohawk@ps.sakura.ne.jp])
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
 
+AC_PREREQ([2.68])
+AC_INIT([HsSVN], [], [pho@cielonegro.org])
 AC_CONFIG_SRCDIR([HsSVN.cabal])
+
+# Checks for programs.
+AC_PROG_CC
+
+# Checks for header files.
+AC_CHECK_HEADERS([stdlib.h])
+
+# Checks for typedefs, structures, and compiler characteristics.
+
+# Checks for library functions.
+AC_CHECK_FUNCS([atexit])
 
 #
 # Checks for Subversion...
 #
-# FIXME: we can get rid of these ugly checks when we got svn-config or
+# NOTE: we can get rid of these ugly checks when we got svn-config or
 # something alike.
 #
 ac_old_CPPFLAGS="$CPPFLAGS"
@@ -61,6 +75,6 @@ AC_CHECK_LIB(
 #
 
 AC_CONFIG_FILES([
-        HsSVN.buildinfo
+    HsSVN.buildinfo
 ])
 AC_OUTPUT

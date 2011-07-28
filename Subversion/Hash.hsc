@@ -1,3 +1,9 @@
+{-# LANGUAGE
+    DeriveDataTypeable
+  , EmptyDataDecls
+  , ForeignFunctionInterface
+  , TypeSynonymInstances
+  #-}
 #include "HsSVN.h"
 
 module Subversion.Hash

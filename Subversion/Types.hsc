@@ -1,5 +1,6 @@
-{- -*- haskell -*- -}
-
+{-# LANGUAGE
+    EmptyDataDecls
+  #-}
 {-# OPTIONS_HADDOCK prune #-}
 
 -- |Some type definitions for Subversion.

@@ -1,5 +1,8 @@
-{- -*- haskell -*- -}
-
+{-# LANGUAGE
+    DeriveDataTypeable
+  , EmptyDataDecls
+  , ForeignFunctionInterface
+  #-}
 {-# OPTIONS_HADDOCK prune #-}
 
 -- |Common exception handling for Subversion. The C API of the
@@ -24,7 +27,7 @@ module Subversion.Error
     where
 
 import           Control.Exception
-import           Data.Dynamic
+import           Data.Typeable
 import           Foreign
 import           Foreign.C.String
 import           Foreign.C.Types

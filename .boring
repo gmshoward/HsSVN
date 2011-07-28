@@ -68,9 +68,10 @@
 ^Subversion/String\.hs$
 ^Subversion/Types\.hs$
 
+^autoscan\.log$
 ^aclocal\.m4$
 ^config\.(cache|status|log)$
-^configure$
+^configure(\.scan)?$
 ^dist($|/)
 ^examples/repos($|/)
 ^examples/HelloWorld$

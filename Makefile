@@ -12,12 +12,8 @@ dist/setup-config: $(CABAL_FILE) configure Setup
 	env EXTRA_CPPFLAGS="-I/usr/pkg/include/subversion-1" EXTRA_LDFLAGS="-L/usr/pkg/lib" ./Setup configure -O
 #	env EXTRA_CPPFLAGS="-I/usr/pkg/include/subversion-1" EXTRA_LDFLAGS="-L/usr/pkg/lib" ./Setup configure --disable-optimization
 
-configure: aclocal.m4 configure.ac
-	autoconf
-
-aclocal.m4:
-	aclocal
-	touch aclocal.m4
+configure: configure.ac
+	autoreconf -i
 
 Setup: Setup.hs
 	$(GHC) --make Setup

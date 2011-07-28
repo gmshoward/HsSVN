@@ -1,3 +1,7 @@
+{-# LANGUAGE
+    EmptyDataDecls
+  , ForeignFunctionInterface
+  #-}
 module Subversion.Pool
     ( Pool
     , APR_POOL_T

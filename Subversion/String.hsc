@@ -1,3 +1,6 @@
+{-# LANGUAGE
+    EmptyDataDecls
+  #-}
 #include "HsSVN.h"
 
 module Subversion.String

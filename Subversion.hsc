@@ -1,5 +1,8 @@
-{- -*- haskell -*- -}
-
+{-# LANGUAGE
+    DeriveDataTypeable
+  , EmptyDataDecls
+  , ForeignFunctionInterface
+  #-}
 -- |HsSVN is a partial Subversion (SVN) binding for Haskell. Currently
 -- it can do most things related to the Subversion FS but others are
 -- left uncoverd.

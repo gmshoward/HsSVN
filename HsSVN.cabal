@@ -21,7 +21,7 @@ Description:
     * subversion >= 1.6 (<http://subversion.apache.org/>)
     .
 Version:       0.4.3.3
-License:       PublicDomain
+License:       CC0
 License-File:  COPYING
 Author:        PHO <pho at cielonegro dot org>
 Maintainer:    PHO <pho at cielonegro dot org>

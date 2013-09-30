@@ -1,6 +1,9 @@
 Changes from 0.4.3.2 to 0.4.3.3
 -------------------------------
-* Fixed breakage on newer GHC and Subversion.
+* Fix breakage on newer GHC and Subversion.
+
+* Change the license of HsSVN from PublicDomain to CC0: a strong form
+  of public domain.
 
 * configure: new option --with-subversion-prefix=PREFIX, deprecating
   EXTRA_CPPFLAGS and EXTRA_LIBS.

@@ -25,13 +25,17 @@ module Subversion.Error
     , SvnErrCode(..)
     )
     where
+import Control.Exception
+import Data.Typeable
+import Foreign.C.String
+import Foreign.C.Types
+import Foreign.ForeignPtr
+import Foreign.Marshal.Array
+import Foreign.Ptr
+import Foreign.Storable
+import Subversion.Types
+import System.IO.Unsafe
 
-import           Control.Exception
-import           Data.Typeable
-import           Foreign
-import           Foreign.C.String
-import           Foreign.C.Types
-import           Subversion.Types
 
 -- |@'SvnError'@ represents a Subversion error.
 newtype SvnError

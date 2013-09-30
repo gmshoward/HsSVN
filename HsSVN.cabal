@@ -1,10 +1,16 @@
 Name:          HsSVN
 Synopsis:      Partial Subversion (SVN) binding for Haskell
 Description:
-    HsSVN is a partial Subversion (SVN) binding for Haskell. Currently it
-    can do most things related to the Subversion FS but others are
-    left uncovered.
-Version:       0.4.3.2
+    .
+    HsSVN is a partial Subversion (SVN) binding for Haskell. Currently
+    it covers the most part of Subversion FS but others are left
+    uncovered.
+    .
+    Please note that you need to pass some extra options to @cabal
+    configure@ when you install HsSVN. See @INSTALL@ in the package
+    tarball for details.
+    .
+Version:       0.4.3.3
 License:       PublicDomain
 License-File:  COPYING
 Author:        PHO <pho at cielonegro dot org>
@@ -12,7 +18,7 @@ Maintainer:    PHO <pho at cielonegro dot org>
 Stability:     experimental
 Homepage:      http://cielonegro.org/HsSVN.html
 Category:      System
-Tested-With:   GHC == 6.12.1
+Tested-With:   GHC == 7.6.2
 Cabal-Version: >= 1.6
 Build-Type: Configure
 Extra-Source-Files:
@@ -31,10 +37,10 @@ Source-Repository head
 
 Library
     Build-Depends:
-        base       == 4.3.*,
-        bytestring == 0.9.*,
-        mtl        == 2.0.*,
-        stm        == 2.2.*
+        base       == 4.*,
+        bytestring >= 0.9 && < 0.11,
+        mtl        >= 2.0 && < 2.2,
+        stm        >= 2.2 && < 2.5
     Exposed-Modules:
         Subversion
         Subversion.Config
@@ -53,7 +59,7 @@ Library
         Subversion.Stream
         Subversion.Stream.Pipe
         Subversion.String
-    GHC-Options: 
+    GHC-Options:
         -Wall
     C-Sources:
         cbits/HsSVN.c

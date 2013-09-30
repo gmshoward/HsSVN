@@ -1,6 +1,7 @@
 {-# LANGUAGE
     DeriveDataTypeable
   , EmptyDataDecls
+  , FlexibleInstances
   , ForeignFunctionInterface
   , TypeSynonymInstances
   #-}
@@ -34,7 +35,8 @@ module Subversion.Hash
 import           Control.Monad
 import           Foreign.C.String
 import           Foreign.C.Types
-import           Foreign.ForeignPtr
+import           Foreign.ForeignPtr hiding (unsafeForeignPtrToPtr)
+import           Foreign.ForeignPtr.Unsafe
 import           Foreign.Marshal.Alloc
 import           Foreign.Marshal.Utils hiding (new)
 import           Foreign.Ptr

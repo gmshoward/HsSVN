@@ -32,8 +32,8 @@ Tested-With:   GHC == 7.6.2
 Cabal-Version: >= 1.6
 Build-Type: Configure
 Extra-Source-Files:
+    ChangeLog
     HsSVN.buildinfo.in
-    NEWS
     cbits/HsSVN.h
     configure
     configure.ac

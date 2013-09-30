@@ -1,0 +1,97 @@
+2013-09-30  PHO  <pho@cielonegro.org>
+
+	* Subversion/Hash.hsc: Fix breakage on newer GHC.
+
+	* cbits/HsSVN.h: Fix breakage on newer Subversion.
+
+	* COPYING: Change the license of HsSVN from PublicDomain to CC0: a
+	strong form of public domain.
+
+	* configure.ac: Add option --with-subversion-prefix=PREFIX,
+	deprecating EXTRA_CPPFLAGS and EXTRA_LIBS.
+
+	* HsSVN.cabal: Bump version to 0.4.3.3
+
+2011-07-28  PHO  <pho@cielonegro.org>
+
+	* HsSVN-0.4.3.2: Fix breakage on newer GHC and other libraries.
+
+2010-08-06  PHO  <pho@cielonegro.org>
+
+	* INSTALL: New file that describes how to build this abnormal
+	package which everyone fails to build. Believe me, it's
+	Subversion's fault. It offers no svn-config, no subversion.pc, and
+	no subversion.m4.
+
+	* configure: small bugfix
+
+	* HsSVN.cabal: Bump version to 0.4.3.1
+
+2010-02-19  PHO  <pho@cielonegro.org>
+
+	* HsSVN-0.4.3: Fixed a serious bug which leads to segmentation
+	fault at apr_hash_next. The hidden module Subversion.Hash was
+	misusing APR memory pools.
+
+2010-02-04  PHO  <pho@cielonegro.org>
+
+	* HsSVN-0.4.2: Fix breakage on GHC 6.12.1.
+
+2009-02-20  PHO  <pho@cielonegro.org>
+
+	* HsSVN.cabal: Fix incorrect dependency declarations.
+
+	* HsSVN.cabal: Bump version to 0.4.1
+
+2009-01-16  PHO  <pho@cielonegro.org>
+
+	* HsSVN-0.4: Fix breakage on GHC 6.10.1. And now it requires
+	6.10.1...
+
+2008-07-20  PHO  <pho@cielonegro.org>
+
+	* configure.ac: Search for apr-1-config and apu-1-config as well.
+
+	* HsSVN.cabal: Bump version to 0.3.3
+
+2008-03-29  PHO  <pho@cielonegro.org>
+
+	* Subversion/Repository.hsc (dumpRepository): Fix the
+	infinite-loop bug again... Hopefully it works now.
+
+	* HsSVN.cabal: Bump version to 0.3.2
+
+2008-03-29  PHO  <pho@cielonegro.org>
+
+	* Subversion/Repository.hsc (dumpRepository): Fix a bug causing an
+	infinite-loop.
+
+	* HsSVN.cabal: Bump version to 0.3.1
+
+2008-03-27  PHO  <pho@cielonegro.org>
+
+	* Subversion/Repository.hsc (dumpRepository): New function.
+
+	* Subversion/FileSystem/Revision.hsc (getRevisionNumber): New
+	function.
+
+	* Subversion/FileSystem/Revision.hsc (getRevisionProp): Rename to
+	getRevisionProp'
+
+	* Subversion/FileSystem/Revision.hsc (getRevisionPropList): Rename
+	to getRevisionPropList'
+
+	* Subversion/FileSystem/Revision.hsc (getRevisionProp): New
+	function.
+
+	* Subversion/FileSystem/Revision.hsc (getRevisionPropList): New
+	function.
+
+2007-11-05  PHO  <pho@cielonegro.org>
+
+	* HsSVN-0.2: Fix breakage on GHC 6.8.1 and now it requires GHC
+	6.8.1.
+
+2007-08-25  PHO  <pho@cielonegro.org>
+
+	* HsSVN-0.1: Initial release.

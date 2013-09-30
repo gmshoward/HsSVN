@@ -27,7 +27,7 @@ Author:        PHO <pho at cielonegro dot org>
 Maintainer:    PHO <pho at cielonegro dot org>
 Stability:     experimental
 Homepage:      http://cielonegro.org/HsSVN.html
-Category:      System
+Category:      System, Development
 Tested-With:   GHC == 7.6.2
 Cabal-Version: >= 1.6
 Build-Type: Configure

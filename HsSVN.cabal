@@ -35,6 +35,7 @@ Build-Type: Configure
 Extra-Source-Files:
     ChangeLog
     HsSVN.buildinfo.in
+    README.rst
     cbits/HsSVN.h
     configure
     configure.ac

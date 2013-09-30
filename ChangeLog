@@ -1,4 +1,4 @@
-2013-09-30  PHO  <pho@cielonegro.org>
+2013-10-01  PHO  <pho@cielonegro.org>
 
 	* Subversion/Hash.hsc: Fix breakage on newer GHC.
 
@@ -6,6 +6,8 @@
 
 	* COPYING: Change the license of HsSVN from PublicDomain to CC0: a
 	strong form of public domain.
+
+	* README.rst: New file.
 
 	* configure.ac: Add option --with-subversion-prefix=PREFIX,
 	deprecating EXTRA_CPPFLAGS and EXTRA_LIBS.

@@ -10,7 +10,9 @@
 	* configure.ac: Add option --with-subversion-prefix=PREFIX,
 	deprecating EXTRA_CPPFLAGS and EXTRA_LIBS.
 
-	* HsSVN.cabal: Bump version to 0.4.3.3
+	* HsSVN.cabal (Source-Repository): Migrate from darcs to git.
+
+	* HsSVN.cabal (Version): Bump version to 0.4.3.3
 
 2011-07-28  PHO  <pho@cielonegro.org>
 

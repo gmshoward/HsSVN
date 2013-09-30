@@ -1,0 +1,11 @@
+*.buildinfo
+*.cache
+*.hi
+*.log
+*.o
+Setup
+config.status
+configure
+dist
+examples/HelloWorld
+examples/repository.dump

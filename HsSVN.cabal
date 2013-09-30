@@ -26,7 +26,8 @@ License-File:  COPYING
 Author:        PHO <pho at cielonegro dot org>
 Maintainer:    PHO <pho at cielonegro dot org>
 Stability:     experimental
-Homepage:      http://cielonegro.org/HsSVN.html
+Homepage:      https://github.com/phonohawk/HsSVN
+Bug-Reports:   https://github.com/phonohawk/HsSVN/issues
 Category:      System, Development
 Tested-With:   GHC == 7.6.2
 Cabal-Version: >= 1.6
@@ -41,8 +42,8 @@ Extra-Source-Files:
     examples/HelloWorld.hs
 
 Source-Repository head
-    Type: darcs
-    Location: http://darcs.cielonegro.org/HsSVN/
+    Type: git
+    Location: git://github.com/phonohawk/HsSVN.git
 
 Library
     Build-Depends:

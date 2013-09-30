@@ -9,8 +9,8 @@ run: build
 	$(MAKE) -C examples run
 
 dist/setup-config: $(CABAL_FILE) configure Setup
-	env EXTRA_CPPFLAGS="-I/usr/pkg/include/subversion-1" EXTRA_LDFLAGS="-L/usr/pkg/lib" ./Setup configure -O
-#	env EXTRA_CPPFLAGS="-I/usr/pkg/include/subversion-1" EXTRA_LDFLAGS="-L/usr/pkg/lib" ./Setup configure --disable-optimization
+	./Setup configure -O \
+		--configure-option="--with-subversion-prefix=/usr/pkg"
 
 configure: configure.ac
 	autoreconf -i

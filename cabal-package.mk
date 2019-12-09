@@ -21,7 +21,7 @@ RM_RF    ?= rm -rf
 RSYNC    ?= rsync
 SUDO     ?= sudo
 
-CONFIGURE_ARGS ?= --disable-optimization
+CONFIGURE_ARGS = --disable-optimization --with-subversion-prefix=/usr
 HADDOCK_OPTS   ?= --hyperlink-source
 HLINT_OPTS     ?= \
 	--hint=Default --hint=Dollar --hint=Generalise \
@@ -52,6 +52,7 @@ BUILDINFO_FILE    := $(BUILDINFO_IN_FILE:.in=)
 all: build
 
 build: setup-config build-hook
+	@echo "GMSH running './Setup build' from build target"
 	./Setup build
 	$(RM_RF) *.tix
 
@@ -72,12 +73,14 @@ setup-config: dist/setup-config setup-config-hook $(BUILDINFO_FILE)
 setup-config-hook:
 
 dist/setup-config: $(CABAL_FILE) Setup $(AUTOCONF_FILE)
+	@echo "GMSH running './Setup configure' from dist/setup-config target"
 	./Setup configure $(CONFIGURE_ARGS)
 
 $(AUTOCONF_FILE): $(AUTOCONF_AC_FILE)
 	$(AUTOCONF)
 
 $(BUILDINFO_FILE): $(BUILDINFO_IN_FILE) configure
+	@echo "GMSH running './Setup configure' from BUILDINFO_FILE target"
 	./Setup configure $(CONFIGURE_ARGS)
 
 Setup: $(SETUP_FILE)

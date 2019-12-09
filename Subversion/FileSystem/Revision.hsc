@@ -63,6 +63,13 @@ instance Monad Rev where
     return  = Rev . return
     fail    = Rev . fail
 
+instance Applicative Rev where
+    pure = return
+    mf <*> mx = do
+        f <- mf
+        x <- mx
+        return (f x)
+
 instance MonadFS Rev where
     getRoot        = Rev ask
     unsafeIOToFS a = Rev (liftIO a)

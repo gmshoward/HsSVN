@@ -10,7 +10,7 @@ Description:
     configure@ to build HsSVN (assuming you have installed Subversion
     to @\/usr\/local@):
     .
-    > cabal configure --configure-option="--with-subversion-prefix=/usr/local"
+    > cabal configure --configure-option="--with-subversion-prefix=/usr"
     > cabal build
     > cabal install
     .
@@ -50,8 +50,8 @@ Library
     Build-Depends:
         base       == 4.*,
         bytestring >= 0.9 && < 0.11,
-        mtl        >= 2.0 && < 2.2,
-        stm        >= 2.2 && < 2.5
+        mtl        >= 2.0,
+        stm        >= 2.2
     Exposed-Modules:
         Subversion
         Subversion.Config

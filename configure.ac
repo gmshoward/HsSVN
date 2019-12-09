@@ -50,7 +50,9 @@ AC_ARG_WITH(
 AS_CASE(
     ["$with_subversion_prefix"],
     ["yes"|"no"|""], [with_subversion_prefix="$prefix"])
-SVN_CFLAGS="$SVN_CFLAGS -I$with_subversion_prefix/include/subversion-1"
+#SVN_CFLAGS="$SVN_CFLAGS -I$with_subversion_prefix/include/subversion-1"
+# Hack to overcome difficulties interoperating with stack.
+SVN_CFLAGS="$SVN_CFLAGS -I/usr/include/subversion-1"
 SVN_LIBS=" \
  $SVN_LIBS \
  -L$with_subversion_prefix/lib \

@@ -81,6 +81,13 @@ instance Monad Txn where
     return  = Txn . return
     fail    = Txn . fail
 
+instance Applicative Txn where
+    pure = return
+    mf <*> mx = do
+        f <- mf
+        x <- mx
+        return (f x)
+
 instance MonadFS Txn where
     getRoot        = Txn (fmap ctxRoot ask)
     unsafeIOToFS a = Txn (liftIO a)
